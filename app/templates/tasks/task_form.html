@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>{% if form_title %}{{ form_title }}{% else %}Create Task{% endif %}</h1>
+    <form action="{{ url_for('tasks.edit_task', task_id=task.id) if task else url_for('tasks.create_task') }}" method="post" novalidate>
+        {% include 'tasks/_task_form.html' %}
+        <div class="d-flex justify-content-between mt-3">
+            <div>
+                {% if task %}
+                <button type="button" id="delete-task-btn" class="btn btn-danger">Delete</button>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+        </div>
+    </form>
+    {% if task %}
+    <script>
+        document.getElementById('delete-task-btn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to delete this task?')) {
+                fetch('/task/delete/' + {{ task.id }}, {
+                    method: 'POST',
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.href = "{{ url_for('tasks.tasks') }}";
+                    } else {
+                        alert('Error deleting task.');
+                    }
+                });
+            }
+        });
+    </script>
+    {% endif %}
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        const detailsDisplay = document.getElementById('details-display');
+        const detailsTextarea = document.getElementById('details');
+
+        if (detailsDisplay && detailsTextarea) {
+            detailsDisplay.innerHTML = marked.parse(detailsTextarea.value);
+
+            detailsDisplay.addEventListener('click', () => {
+                detailsDisplay.classList.add('d-none');
+                detailsTextarea.classList.remove('d-none');
+                detailsTextarea.focus();
+                autoResizeTextarea(detailsTextarea);
+            });
+
+            detailsTextarea.addEventListener('blur', () => {
+                detailsDisplay.classList.remove('d-none');
+                detailsTextarea.classList.add('d-none');
+                detailsDisplay.innerHTML = marked.parse(detailsTextarea.value);
+            });
+
+            detailsTextarea.addEventListener('input', () => {
+                autoResizeTextarea(detailsTextarea);
+            });
+        }
+
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        }
+    </script>
+{% endblock %}

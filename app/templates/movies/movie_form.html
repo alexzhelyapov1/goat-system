@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>{{ 'Edit Movie' if movie else 'Create Movie' }}</h1>
+    <form action="{{ url_for('movies.edit_movie', movie_id=movie.id) if movie else url_for('movies.create_movie') }}" method="post" novalidate>
+        <div class="mb-3">
+            <label for="title" class="form-label">Title</label>
+            <input type="text" class="form-control" id="title" name="title" value="{{ movie.title if movie else '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="genre" class="form-label">Genre</label>
+            <input type="text" class="form-control" id="genre" name="genre" value="{{ movie.genre if movie else '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="rating" class="form-label">Rating</label>
+            <input type="number" class="form-control" id="rating" name="rating" min="0" max="10" value="{{ movie.rating if movie else '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="comment" class="form-label">Comment</label>
+            <div id="comment-display" style="border: 1px solid #ced4da; padding: .375rem .75rem; border-radius: .25rem; min-height: 100px;"></div>
+            <textarea class="form-control d-none" id="comment" name="comment" rows="5">{{ movie.comment if movie else '' }}</textarea>
+        </div>
+        <div class="d-flex justify-content-between mt-3">
+            <div>
+                {% if movie %}
+                <button type="button" id="delete-movie-btn" class="btn btn-danger">Delete</button>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+        </div>
+    </form>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        function setupMarkdownEditor(displayId, textareaId) {
+            const display = document.getElementById(displayId);
+            const textarea = document.getElementById(textareaId);
+
+            display.innerHTML = marked.parse(textarea.value);
+
+            display.addEventListener('click', () => {
+                display.classList.add('d-none');
+                textarea.classList.remove('d-none');
+                textarea.focus();
+                autoResizeTextarea(textarea);
+            });
+
+            textarea.addEventListener('blur', () => {
+                display.classList.remove('d-none');
+                textarea.classList.add('d-none');
+                display.innerHTML = marked.parse(textarea.value);
+            });
+
+            textarea.addEventListener('input', () => {
+                autoResizeTextarea(textarea);
+            });
+        }
+
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        }
+
+        setupMarkdownEditor('comment-display', 'comment');
+        
+        {% if movie %}
+        document.getElementById('delete-movie-btn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to delete this movie?')) {
+                fetch('/movie/delete/' + {{ movie.id }}, {
+                    method: 'POST',
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.href = "{{ url_for('movies.movies') }}";
+                    } else {
+                        alert('Error deleting movie.');
+                    }
+                });
+            }
+        });
+        {% endif %}
+    </script>
+{% endblock %}
+
+
+

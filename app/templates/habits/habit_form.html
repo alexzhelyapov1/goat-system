@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>{{ 'Edit Habit' if habit else 'Create Habit' }}</h1>
+    <form action="{{ url_for('habits.edit_habit', habit_id=habit.id) if habit else url_for('habits.create_habit') }}" method="post" novalidate>
+        {% include 'habits/_habit_form.html' %}
+        <div class="d-flex justify-content-between mt-3">
+            <div>
+                {% if habit %}
+                <button type="button" id="delete-habit-btn" class="btn btn-danger">Delete</button>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary">Save changes</button>
+        </div>
+    </form>
+    {% if habit %}
+    <script>
+        document.getElementById('delete-habit-btn').addEventListener('click', function() {
+            if (confirm('Are you sure you want to delete this habit?')) {
+                fetch('/habit/delete/' + {{ habit.id }}, {
+                    method: 'POST',
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.href = "{{ url_for('habits.habits') }}";
+                    } else {
+                        alert('Error deleting habit.');
+                    }
+                });
+            }
+        });
+    </script>
+    {% endif %}
+{% endblock %}
+

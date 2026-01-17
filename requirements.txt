@@ -1,0 +1,9 @@
+Flask
+Flask-Login
+Flask-Migrate
+Flask-SQLAlchemy
+pydantic
+alembic
+gunicorn
+python-dotenv
+APScheduler

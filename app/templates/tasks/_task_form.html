@@ -1,0 +1,71 @@
+<div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="title" class="form-label">Title</label>
+                <input type="text" class="form-control" id="title" name="title" value="{{ task.title if task else '' }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                    {% for status in task_statuses %}
+                        <option value="{{ status.value }}" {% if task and task.status == status %}selected{% endif %}>{{ status.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="type" class="form-label">Type</label>
+                <select class="form-select" id="type" name="type">
+                    {% for type in task_types %}
+                        <option value="{{ type.value }}" {% if task and task.type == type %}selected{% endif %}>{{ type.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="duration" class="form-label">Duration (minutes)</label>
+                <input type="number" class="form-control" id="duration" name="duration" value="{{ task.duration if task else '' }}">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="deadline_date" class="form-label">Deadline</label>
+                <div class="input-group">
+                    <input type="date" class="form-control" id="deadline_date" name="deadline_date" value="{{ task.deadline.strftime('%Y-%m-%d') if task and task.deadline else '' }}">
+                    <input type="time" class="form-control" id="deadline_time" name="deadline_time" value="{{ task.deadline.strftime('%H:%M') if task and task.deadline else '' }}">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="planned_start_date" class="form-label">Planned Start</label>
+                <div class="input-group">
+                    <input type="date" class="form-control" id="planned_start_date" name="planned_start_date" value="{{ task.planned_start.strftime('%Y-%m-%d') if task and task.planned_start else '' }}">
+                    <input type="time" class="form-control" id="planned_start_time" name="planned_start_time" value="{{ task.planned_start.strftime('%H:%M') if task and task.planned_start else '' }}">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="planned_end_date" class="form-label">Planned End</label>
+                <div class="input-group">
+                    <input type="date" class="form-control" id="planned_end_date" name="planned_end_date" value="{{ task.planned_end.strftime('%Y-%m-%d') if task and task.planned_end else '' }}">
+                    <input type="time" class="form-control" id="planned_end_time" name="planned_end_time" value="{{ task.planned_end.strftime('%H:%M') if task and task.planned_end else '' }}">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="suspend_due_date" class="form-label">Suspend Due</label>
+                <div class="input-group">
+                    <input type="date" class="form-control" id="suspend_due_date" name="suspend_due_date" value="{{ task.suspend_due.strftime('%Y-%m-%d') if task and task.suspend_due else '' }}">
+                    <input type="time" class="form-control" id="suspend_due_time" name="suspend_due_time" value="{{ task.suspend_due.strftime('%H:%M') if task and task.suspend_due else '' }}">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="notify_at_date" class="form-label">Notify At</label>
+                <div class="input-group">
+                    <input type="date" class="form-control" id="notify_at_date" name="notify_at_date" value="{{ task.notify_at.strftime('%Y-%m-%d') if task and task.notify_at else '' }}">
+                    <input type="time" class="form-control" id="notify_at_time" name="notify_at_time" value="{{ task.notify_at.strftime('%H:%M') if task and task.notify_at else '' }}">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label for="details" class="form-label">Details</label>
+        <div id="details-display" style="border: 1px solid #ced4da; padding: .375rem .75rem; border-radius: .25rem; min-height: 100px;"></div>
+        <textarea class="form-control d-none" id="details" name="details" rows="5">{{ task.details if task else '' }}</textarea>
+    </div>
+

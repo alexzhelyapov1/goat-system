@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Tasks</h1>
+    <div class="d-flex justify-content-between mb-3">
+        <div>
+            <a href="{{ url_for('tasks.tasks', type='all') }}" class="btn btn-{{ 'primary' if current_filter == 'all' else 'secondary' }}">All</a>
+            <a href="{{ url_for('tasks.tasks', type='INBOX') }}" class="btn btn-{{ 'primary' if current_filter == 'INBOX' else 'secondary' }}">Inbox</a>
+            <a href="{{ url_for('tasks.tasks', type='CURRENT') }}" class="btn btn-{{ 'primary' if current_filter == 'CURRENT' else 'secondary' }}">Current</a>
+            <a href="{{ url_for('tasks.tasks', type='SOMEDAY') }}" class="btn btn-{{ 'primary' if current_filter == 'SOMEDAY' else 'secondary' }}">Someday</a>
+        </div>
+        <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">Create Task</a>
+    </div>
+    <div class="list-group">
+        {% for task in tasks %}
+            <a href="#" data-bs-toggle="modal" data-bs-target="#taskModal" data-task-id="{{ task.id }}" class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ task.title }}</h5>
+                    <small>{{ task.status.value }}</small>
+                </div>
+                <small>{{ task.type.value }}</small>
+            </a>
+        {% endfor %}
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="taskModalLabel">Edit Task</h5>
+            <a href="#" id="full-page-edit-link" class="btn btn-secondary ms-auto">Expand</a>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form action="" method="post" novalidate id="task-modal-form">
+                {% include 'tasks/_task_form.html' %}
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="delete-task-btn" class="btn btn-danger me-auto">Delete</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" form="task-modal-form" class="btn btn-primary">Save changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var taskModal = document.getElementById('taskModal');
+            var taskModalForm = document.getElementById('task-modal-form');
+            var detailsDisplay = taskModal.querySelector('#details-display');
+            var detailsTextarea = taskModal.querySelector('#details');
+            var deleteTaskBtn = document.getElementById('delete-task-btn');
+            var currentTaskId;
+
+            // Markdown editor logic for the modal form
+            if (detailsDisplay && detailsTextarea) {
+                detailsDisplay.innerHTML = marked.parse(detailsTextarea.value);
+
+                detailsDisplay.addEventListener('click', () => {
+                    detailsDisplay.classList.add('d-none');
+                    detailsTextarea.classList.remove('d-none');
+                    detailsTextarea.focus();
+                    autoResizeTextarea(detailsTextarea);
+                });
+
+                detailsTextarea.addEventListener('blur', () => {
+                    detailsDisplay.classList.remove('d-none');
+                    detailsTextarea.classList.add('d-none');
+                    detailsDisplay.innerHTML = marked.parse(detailsTextarea.value);
+                });
+
+                detailsTextarea.addEventListener('input', () => {
+                    autoResizeTextarea(detailsTextarea);
+                });
+            }
+
+            function autoResizeTextarea(textarea) {
+                textarea.style.height = 'auto';
+                textarea.style.height = (textarea.scrollHeight) + 'px';
+            }
+
+
+            taskModal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                var taskId = button.getAttribute('data-task-id');
+                currentTaskId = taskId;
+                var modalTitle = taskModal.querySelector('.modal-title');
+                var fullPageEditLink = document.getElementById('full-page-edit-link');
+
+                // Set the title and form action
+                modalTitle.textContent = 'Edit Task ' + taskId;
+                taskModalForm.action = '/task/edit/' + taskId;
+                fullPageEditLink.href = '/task/edit/' + taskId;
+
+                // Fetch task data and populate the form
+                fetch('/task/' + taskId + '/json')
+                    .then(response => response.json())
+                    .then(data => {
+                        taskModalForm.title.value = data.title;
+                        taskModalForm.status.value = data.status;
+                        taskModalForm.type.value = data.type;
+                        taskModalForm.duration.value = data.duration;
+                        taskModalForm.details.value = data.details;
+
+                        // Update markdown display
+                        if (detailsDisplay && detailsTextarea) {
+                            detailsTextarea.value = data.details || '';
+                            detailsDisplay.innerHTML = marked.parse(detailsTextarea.value);
+                        }
+
+
+                        if (data.deadline) {
+                            taskModalForm.deadline_date.value = data.deadline.substring(0, 10);
+                            taskModalForm.deadline_time.value = data.deadline.substring(11, 16);
+                        } else {
+                            taskModalForm.deadline_date.value = '';
+                            taskModalForm.deadline_time.value = '';
+                        }
+                        if (data.planned_start) {
+                            taskModalForm.planned_start_date.value = data.planned_start.substring(0, 10);
+                            taskModalForm.planned_start_time.value = data.planned_start.substring(11, 16);
+                        } else {
+                            taskModalForm.planned_start_date.value = '';
+                            taskModalForm.planned_start_time.value = '';
+                        }
+                        if (data.planned_end) {
+                            taskModalForm.planned_end_date.value = data.planned_end.substring(0, 10);
+                            taskModalForm.planned_end_time.value = data.planned_end.substring(11, 16);
+                        }
+                        if (data.suspend_due) {
+                            taskModalForm.suspend_due_date.value = data.suspend_due.substring(0, 10);
+                            taskModalForm.suspend_due_time.value = data.suspend_due.substring(11, 16);
+                        }
+                        if (data.notify_at) {
+                            taskModalForm.notify_at_date.value = data.notify_at.substring(0, 10);
+                            taskModalForm.notify_at_time.value = data.notify_at.substring(11, 16);
+                        } else {
+                            taskModalForm.notify_at_date.value = '';
+                            taskModalForm.notify_at_time.value = '';
+                        }
+                    })
+                    .catch(error => console.error('Error fetching task data:', error));
+            });
+
+            deleteTaskBtn.addEventListener('click', function() {
+                if (confirm('Are you sure you want to delete this task?')) {
+                    fetch('/task/delete/' + currentTaskId, {
+                        method: 'POST',
+                    }).then(response => {
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            alert('Error deleting task.');
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+{% endblock %}

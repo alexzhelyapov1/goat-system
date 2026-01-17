@@ -1,0 +1,19 @@
+# Environment
+.env
+.venv
+venv/
+
+# Database
+app.db
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE / OS
+.DS_Store
+
+# Project specific
+context.txt
+prompts
+instance/
