@@ -31,7 +31,7 @@ set -e
 # The directory where the application will be installed.
 APP_DIR="/var/www/goat-system"
 # The git repository URL.
-GIT_URL="https://github.com/YOUR_USERNAME/goat-system.git" # <-- CHANGE THIS
+GIT_URL="https://github.com/alexzhelyapov1/goat-system.git" # <-- CHANGE THIS
 # The user that will run the application.
 APP_USER="www-data" # Or another dedicated user
 
@@ -48,7 +48,8 @@ source venv/bin/activate
 
 echo "--- Installing dependencies ---"
 # This list is based on project analysis. A requirements.txt file is recommended.
-pip install flask flask-login flask-migrate flask-sqlalchemy pydantic alembic gunicorn python-dotenv APScheduler
+# pip install flask flask-login flask-migrate flask-sqlalchemy pydantic alembic gunicorn python-dotenv APScheduler
+pip install -r requirements.txt
 
 echo "--- Creating .env file for configuration ---"
 # Generate a strong, random secret key
@@ -74,6 +75,7 @@ flask db upgrade
 echo "--- Setting ownership ---"
 # Change ownership of the directory to the application user
 sudo chown -R ${APP_USER}:${APP_USER} ${APP_DIR}
+# sudo chown -R www-data:www-data /var/www/goat-system
 
 echo "--- Setup complete! ---"
 echo "To run the application, activate the venv ('source venv/bin/activate') and run Gunicorn."
@@ -95,7 +97,7 @@ To ensure the application runs automatically and restarts on failure, run it as 
 1.  Create a service file:
 
     ```bash
-    sudo nano /etc/systemd/system/goat-system.service
+    sudo vim /etc/systemd/system/goat-system.service
     ```
 
 2.  Add the following content. Be sure to adjust `User` and paths if you changed them in the setup script.
@@ -110,7 +112,7 @@ To ensure the application runs automatically and restarts on failure, run it as 
     Group=www-data
     WorkingDirectory=/var/www/goat-system
     Environment="PATH=/var/www/goat-system/venv/bin"
-    ExecStart=/var/www/goat-system/venv/bin/gunicorn --workers 3 --bind unix:goat-system.sock -m 007 run:app
+    ExecStart=/var/www/goat-system/venv/bin/gunicorn --workers 1 --bind unix:goat-system.sock -m 007 run:app
 
     [Install]
     WantedBy=multi-user.target
@@ -131,7 +133,7 @@ You will need a web server like Nginx to act as a reverse proxy, directing traff
 2.  Create an Nginx configuration file:
 
     ```bash
-    sudo nano /etc/nginx/sites-available/goat-system
+    sudo vim /etc/nginx/sites-available/goat-system
     ```
 
 3.  Add this configuration, replacing `your_domain.com`:
@@ -139,7 +141,7 @@ You will need a web server like Nginx to act as a reverse proxy, directing traff
     ```nginx
     server {
         listen 80;
-        server_name your_domain.com;
+        server_name _;
 
         location / {
             include proxy_params;
@@ -153,4 +155,5 @@ You will need a web server like Nginx to act as a reverse proxy, directing traff
     ```bash
     sudo ln -s /etc/nginx/sites-available/goat-system /etc/nginx/sites-enabled
     sudo systemctl restart nginx
+    sudo ufw allow 5000
     ```
