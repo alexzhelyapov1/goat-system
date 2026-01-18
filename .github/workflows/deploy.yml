@@ -20,6 +20,4 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           script: |
-            # Make sure the deployment script is executable and run it
-            chmod +x /var/www/goat-system/scripts/deploy.sh
             /var/www/goat-system/scripts/deploy.sh

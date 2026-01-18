@@ -1,1 +1,0 @@
-It's a good plan, we'll do all 4 points. I also want github CI/CD to automatically update the site on the server if the commit is marked with the release-* tag.
