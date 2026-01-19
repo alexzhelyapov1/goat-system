@@ -45,11 +45,19 @@ def create_habit():
                 strategy_params_str = '{}'
             strategy_params = json.loads(strategy_params_str)
 
+            start_date = request.form.get('start_date')
+            if not start_date:
+                start_date = datetime.utcnow().date()
+
+            end_date = request.form.get('end_date')
+            if not end_date:
+                end_date = None
+
             habit_data = HabitCreate(
                 name=request.form['name'],
                 description=request.form.get('description'),
-                start_date=request.form.get('start_date'),
-                end_date=request.form.get('end_date'),
+                start_date=start_date,
+                end_date=end_date,
                 strategy_type=request.form['strategy_type'],
                 strategy_params=strategy_params
             )
@@ -75,11 +83,19 @@ def edit_habit(habit_id):
                 strategy_params_str = '{}'
             strategy_params = json.loads(strategy_params_str)
             
+            start_date = request.form.get('start_date')
+            if not start_date:
+                start_date = datetime.utcnow().date()
+
+            end_date = request.form.get('end_date')
+            if not end_date:
+                end_date = None
+
             habit_data = HabitCreate(
                 name=request.form['name'],
                 description=request.form.get('description'),
-                start_date=request.form.get('start_date'),
-                end_date=request.form.get('end_date'),
+                start_date=start_date,
+                end_date=end_date,
                 strategy_type=request.form['strategy_type'],
                 strategy_params=strategy_params
             )

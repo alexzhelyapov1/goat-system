@@ -47,6 +47,8 @@ class HabitBase(BaseModel):
 
     @validator('start_date', 'end_date', pre=True)
     def parse_date(cls, v):
+        if not v:
+            return None
         if isinstance(v, str):
             return datetime.strptime(v, '%Y-%m-%d').date()
         if isinstance(v, datetime):
