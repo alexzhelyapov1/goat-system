@@ -56,7 +56,7 @@ def create_task():
             task_data = TaskCreate(**form_data)
             TaskService.create_task(task_data)
             flash('Task created successfully!')
-            return redirect(url_for('tasks.tasks'))
+            return redirect(request.referrer or url_for('tasks.tasks'))
         except ValidationError as e:
             flash(str(e.errors()))
             return redirect(url_for('tasks.create_task'))
@@ -91,7 +91,7 @@ def edit_task(task_id):
             task_data = TaskCreate(**form_data)
             TaskService.update_task(task_id, task_data)
             flash('Task updated successfully!')
-            return redirect(url_for('tasks.tasks'))
+            return redirect(request.referrer or url_for('tasks.tasks'))
         except ValidationError as e:
             flash(str(e.errors()))
     return render_template('tasks/task_form.html', task=task, form_title='Edit Task', task_statuses=TaskStatus, task_types=TaskType)

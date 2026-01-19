@@ -15,13 +15,15 @@
     </div>
     <div class="list-group">
         {% for task in tasks %}
-            <a href="#" data-bs-toggle="modal" data-bs-target="#taskModal" data-task-id="{{ task.id }}" class="list-group-item list-group-item-action">
+            <div class="list-group-item">
                 <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">{{ task.title }}</h5>
-                    <small>{{ task.status.value }}</small>
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#taskModal" data-task-id="{{ task.id }}" class="text-decoration-none text-dark flex-grow-1">
+                        <h5 class="mb-1">{{ task.title }}</h5>
+                        <small>{{ task.type.value }}</small>
+                    </a>
+                    <button class="btn btn-danger btn-sm" onclick="deleteTask(this)" data-task-id="{{ task.id }}">Delete</button>
                 </div>
-                <small>{{ task.type.value }}</small>
-            </a>
+            </div>
         {% endfor %}
     </div>
 
@@ -50,6 +52,21 @@
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
+        function deleteTask(button) {
+            var taskId = button.getAttribute('data-task-id');
+            if (confirm('Are you sure you want to delete this task?')) {
+                fetch('/task/delete/' + taskId, {
+                    method: 'POST',
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Error deleting task.');
+                    }
+                });
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             var taskModal = document.getElementById('taskModal');
             var taskModalForm = document.getElementById('task-modal-form');

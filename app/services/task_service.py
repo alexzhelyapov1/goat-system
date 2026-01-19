@@ -9,7 +9,7 @@ class TaskService:
         query = Task.query.filter_by(user_id=user_id)
         if task_type:
             if task_type == 'all':
-                query = query.filter(Task.type.in_(['CURRENT', 'ROUTINE']))
+                query = query.filter(Task.type.in_(['CURRENT', 'ROUTINE', 'INBOX']))
             else:
                 query = query.filter_by(type=task_type)
         return query.all()
