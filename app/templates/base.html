@@ -26,9 +26,6 @@
                             <a class="nav-link {% if request.endpoint == 'movies.movies' %}active{% endif %}" href="{{ url_for('movies.movies') }}">Movies</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'people.people' %}active{% endif %}" href="{{ url_for('people.people') }}">People</a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'calendar.calendar' %}active{% endif %}" href="{{ url_for('calendar.calendar') }}">Calendar</a>
                         </li>
                     {% endif %}

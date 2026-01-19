@@ -24,8 +24,6 @@ def create_app(config_class=config.Config):
     from app.movies import bp as movies_bp
     app.register_blueprint(movies_bp)
 
-    from app.people import bp as people_bp
-    app.register_blueprint(people_bp)
 
     from app.calendar import bp as calendar_bp
     app.register_blueprint(calendar_bp)
