@@ -92,6 +92,8 @@
             var commentTextarea = movieModal.querySelector('#comment');
             var deleteMovieBtn = document.getElementById('delete-movie-btn');
             var currentMovieId;
+            var exportModalEl = document.getElementById('exportModal');
+            var exportModal = new bootstrap.Modal(exportModalEl);
             var exportMoviesBtn = document.getElementById('export-movies-btn');
 
             exportMoviesBtn.addEventListener('click', function() {
@@ -114,6 +116,8 @@
                         document.body.appendChild(a);
                         a.click();
                         a.remove();
+                        // Close the modal after export
+                        exportModal.hide();
                     });
             });
 
