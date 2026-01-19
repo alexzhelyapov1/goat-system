@@ -11,7 +11,7 @@
             <a href="{{ url_for('tasks.tasks', type='REST') }}" class="btn btn-{{ 'primary' if current_filter == 'REST' else 'secondary' }}">Rest</a>
             <a href="{{ url_for('tasks.tasks', type='ROUTINE') }}" class="btn btn-{{ 'primary' if current_filter == 'ROUTINE' else 'secondary' }}">Routine</a>
         </div>
-        <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">Create Task</a>
+        <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#taskModal" data-task-id="create">Create Task</a>
     </div>
     <div class="list-group">
         {% for task in tasks %}
@@ -93,59 +93,72 @@
                 var modalTitle = taskModal.querySelector('.modal-title');
                 var fullPageEditLink = document.getElementById('full-page-edit-link');
 
-                // Set the title and form action
-                modalTitle.textContent = 'Edit Task ' + taskId;
-                taskModalForm.action = '/task/edit/' + taskId;
-                fullPageEditLink.href = '/task/edit/' + taskId;
+                if (taskId === 'create') {
+                    modalTitle.textContent = 'Create Task';
+                    taskModalForm.action = '{{ url_for("tasks.create_task") }}';
+                    fullPageEditLink.href = '{{ url_for("tasks.create_task") }}';
+                    taskModalForm.reset();
+                    if (detailsDisplay && detailsTextarea) {
+                        detailsTextarea.value = '';
+                        detailsDisplay.innerHTML = '';
+                    }
+                    deleteTaskBtn.style.display = 'none';
+                } else {
+                    deleteTaskBtn.style.display = 'block';
+                    // Set the title and form action
+                    modalTitle.textContent = 'Edit Task ' + taskId;
+                    taskModalForm.action = '/task/edit/' + taskId;
+                    fullPageEditLink.href = '/task/edit/' + taskId;
 
-                // Fetch task data and populate the form
-                fetch('/task/' + taskId + '/json')
-                    .then(response => response.json())
-                    .then(data => {
-                        taskModalForm.title.value = data.title;
-                        taskModalForm.status.value = data.status;
-                        taskModalForm.type.value = data.type;
-                        taskModalForm.duration.value = data.duration;
-                        taskModalForm.details.value = data.details;
+                    // Fetch task data and populate the form
+                    fetch('/task/' + taskId + '/json')
+                        .then(response => response.json())
+                        .then(data => {
+                            taskModalForm.title.value = data.title;
+                            taskModalForm.status.value = data.status;
+                            taskModalForm.type.value = data.type;
+                            taskModalForm.duration.value = data.duration;
+                            taskModalForm.details.value = data.details;
 
-                        // Update markdown display
-                        if (detailsDisplay && detailsTextarea) {
-                            detailsTextarea.value = data.details || '';
-                            detailsDisplay.innerHTML = marked.parse(detailsTextarea.value);
-                        }
+                            // Update markdown display
+                            if (detailsDisplay && detailsTextarea) {
+                                detailsTextarea.value = data.details || '';
+                                detailsDisplay.innerHTML = marked.parse(detailsTextarea.value);
+                            }
 
 
-                        if (data.deadline) {
-                            taskModalForm.deadline_date.value = data.deadline.substring(0, 10);
-                            taskModalForm.deadline_time.value = data.deadline.substring(11, 16);
-                        } else {
-                            taskModalForm.deadline_date.value = '';
-                            taskModalForm.deadline_time.value = '';
-                        }
-                        if (data.planned_start) {
-                            taskModalForm.planned_start_date.value = data.planned_start.substring(0, 10);
-                            taskModalForm.planned_start_time.value = data.planned_start.substring(11, 16);
-                        } else {
-                            taskModalForm.planned_start_date.value = '';
-                            taskModalForm.planned_start_time.value = '';
-                        }
-                        if (data.planned_end) {
-                            taskModalForm.planned_end_date.value = data.planned_end.substring(0, 10);
-                            taskModalForm.planned_end_time.value = data.planned_end.substring(11, 16);
-                        }
-                        if (data.suspend_due) {
-                            taskModalForm.suspend_due_date.value = data.suspend_due.substring(0, 10);
-                            taskModalForm.suspend_due_time.value = data.suspend_due.substring(11, 16);
-                        }
-                        if (data.notify_at) {
-                            taskModalForm.notify_at_date.value = data.notify_at.substring(0, 10);
-                            taskModalForm.notify_at_time.value = data.notify_at.substring(11, 16);
-                        } else {
-                            taskModalForm.notify_at_date.value = '';
-                            taskModalForm.notify_at_time.value = '';
-                        }
-                    })
-                    .catch(error => console.error('Error fetching task data:', error));
+                            if (data.deadline) {
+                                taskModalForm.deadline_date.value = data.deadline.substring(0, 10);
+                                taskModalForm.deadline_time.value = data.deadline.substring(11, 16);
+                            } else {
+                                taskModalForm.deadline_date.value = '';
+                                taskModalForm.deadline_time.value = '';
+                            }
+                            if (data.planned_start) {
+                                taskModalForm.planned_start_date.value = data.planned_start.substring(0, 10);
+                                taskModalForm.planned_start_time.value = data.planned_start.substring(11, 16);
+                            } else {
+                                taskModalForm.planned_start_date.value = '';
+                                taskModalForm.planned_start_time.value = '';
+                            }
+                            if (data.planned_end) {
+                                taskModalForm.planned_end_date.value = data.planned_end.substring(0, 10);
+                                taskModalForm.planned_end_time.value = data.planned_end.substring(11, 16);
+                            }
+                            if (data.suspend_due) {
+                                taskModalForm.suspend_due_date.value = data.suspend_due.substring(0, 10);
+                                taskModalForm.suspend_due_time.value = data.suspend_due.substring(11, 16);
+                            }
+                            if (data.notify_at) {
+                                taskModalForm.notify_at_date.value = data.notify_at.substring(0, 10);
+                                taskModalForm.notify_at_time.value = data.notify_at.substring(11, 16);
+                            } else {
+                                taskModalForm.notify_at_date.value = '';
+                                taskModalForm.notify_at_time.value = '';
+                            }
+                        })
+                        .catch(error => console.error('Error fetching task data:', error));
+                }
             });
 
             deleteTaskBtn.addEventListener('click', function() {
