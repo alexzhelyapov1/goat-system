@@ -14,6 +14,8 @@ class TaskType(enum.Enum):
     CURRENT = 'CURRENT'
     SOMEDAY = 'SOMEDAY'
     CALENDAR = 'CALENDAR'
+    REST = 'REST'
+    ROUTINE = 'ROUTINE'
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)

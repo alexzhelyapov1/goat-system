@@ -16,8 +16,18 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     {% if current_user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'tasks.tasks' %}active{% endif %}" href="{{ url_for('tasks.tasks') }}">Tasks</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Tasks
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('tasks.tasks', type='all') }}">All</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('tasks.tasks', type='INBOX') }}">Inbox</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('tasks.tasks', type='CURRENT') }}">Current</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('tasks.tasks', type='SOMEDAY') }}">Someday</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('tasks.tasks', type='REST') }}">Rest</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('tasks.tasks', type='ROUTINE') }}">Routine</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'habits.habits' %}active{% endif %}" href="{{ url_for('habits.habits') }}">Habits</a>

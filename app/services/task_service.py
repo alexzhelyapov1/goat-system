@@ -7,8 +7,11 @@ class TaskService:
     @staticmethod
     def get_tasks_by_user_and_type(user_id, task_type=None):
         query = Task.query.filter_by(user_id=user_id)
-        if task_type and task_type != 'all':
-            query = query.filter_by(type=task_type)
+        if task_type:
+            if task_type == 'all':
+                query = query.filter(Task.type.in_(['CURRENT', 'ROUTINE']))
+            else:
+                query = query.filter_by(type=task_type)
         return query.all()
 
     @staticmethod

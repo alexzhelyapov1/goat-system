@@ -8,6 +8,8 @@
             <a href="{{ url_for('tasks.tasks', type='INBOX') }}" class="btn btn-{{ 'primary' if current_filter == 'INBOX' else 'secondary' }}">Inbox</a>
             <a href="{{ url_for('tasks.tasks', type='CURRENT') }}" class="btn btn-{{ 'primary' if current_filter == 'CURRENT' else 'secondary' }}">Current</a>
             <a href="{{ url_for('tasks.tasks', type='SOMEDAY') }}" class="btn btn-{{ 'primary' if current_filter == 'SOMEDAY' else 'secondary' }}">Someday</a>
+            <a href="{{ url_for('tasks.tasks', type='REST') }}" class="btn btn-{{ 'primary' if current_filter == 'REST' else 'secondary' }}">Rest</a>
+            <a href="{{ url_for('tasks.tasks', type='ROUTINE') }}" class="btn btn-{{ 'primary' if current_filter == 'ROUTINE' else 'secondary' }}">Routine</a>
         </div>
         <a href="{{ url_for('tasks.create_task') }}" class="btn btn-primary">Create Task</a>
     </div>
