@@ -15,7 +15,7 @@
     </div>
     <div class="list-group">
         {% for task in tasks %}
-            <div class="list-group-item">
+            <div class="list-group-item {% if task.type.value == 'INBOX' %}list-group-item-inbox{% elif task.type.value == 'ROUTINE' %}list-group-item-routine{% elif task.type.value == 'CURRENT' %}list-group-item-current{% endif %}">
                 <div class="d-flex w-100 justify-content-between">
                     <a href="#" data-bs-toggle="modal" data-bs-target="#taskModal" data-task-id="{{ task.id }}" class="text-decoration-none text-dark flex-grow-1">
                         <h5 class="mb-1">{{ task.title }}</h5>
