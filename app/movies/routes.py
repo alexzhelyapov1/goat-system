@@ -60,3 +60,19 @@ def delete_movie(movie_id):
     MovieService.delete_movie(movie_id)
     flash('Movie deleted successfully!')
     return jsonify({'success': True})
+
+@bp.route('/movies/export')
+@login_required
+def export_movies():
+    fields = request.args.getlist('fields')
+    movies = MovieService.get_movies_by_user(current_user.id)
+    
+    movies_to_export = []
+    for movie in movies:
+        movie_dict = MovieSchema.model_validate(movie).model_dump(mode="json")
+        exported_movie = {field: movie_dict.get(field) for field in fields}
+        movies_to_export.append(exported_movie)
+        
+    response = jsonify(movies_to_export)
+    response.headers['Content-Disposition'] = 'attachment; filename=movies.json'
+    return response

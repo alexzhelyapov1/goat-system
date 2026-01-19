@@ -3,6 +3,9 @@
 {% block content %}
     <h1>Movies</h1>
     <a href="{{ url_for('movies.create_movie') }}" class="btn btn-primary mb-3">Create Movie</a>
+    <button type="button" class="btn btn-secondary mb-3" data-bs-toggle="modal" data-bs-target="#exportModal">
+        Export
+    </button>
     <div class="list-group">
         {% for movie in movies %}
             <a href="#" data-bs-toggle="modal" data-bs-target="#movieModal" data-movie-id="{{ movie.id }}" class="list-group-item list-group-item-action">
@@ -13,6 +16,49 @@
                 <small>{{ movie.genre }}</small>
             </a>
         {% endfor %}
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportModalLabel">Export Movies</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Select fields to export:</p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="title" id="export-title" checked>
+                        <label class="form-check-label" for="export-title">
+                            Title
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="genre" id="export-genre">
+                        <label class="form-check-label" for="export-genre">
+                            Genre
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="rating" id="export-rating" checked>
+                        <label class="form-check-label" for="export-rating">
+                            Rating
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="comment" id="export-comment">
+                        <label class="form-check-label" for="export-comment">
+                            Comment
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="export-movies-btn">Export</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal -->
@@ -46,6 +92,30 @@
             var commentTextarea = movieModal.querySelector('#comment');
             var deleteMovieBtn = document.getElementById('delete-movie-btn');
             var currentMovieId;
+            var exportMoviesBtn = document.getElementById('export-movies-btn');
+
+            exportMoviesBtn.addEventListener('click', function() {
+                var selectedFields = [];
+                var checkboxes = document.querySelectorAll('#exportModal .form-check-input');
+                checkboxes.forEach(function(checkbox) {
+                    if (checkbox.checked) {
+                        selectedFields.push(checkbox.value);
+                    }
+                });
+
+                var queryString = selectedFields.map(field => 'fields=' + field).join('&');
+                fetch('/movies/export?' + queryString)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        var url = window.URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'movies.json';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    });
+            });
 
             // Markdown editor logic for the modal form
             if (commentDisplay && commentTextarea) {
