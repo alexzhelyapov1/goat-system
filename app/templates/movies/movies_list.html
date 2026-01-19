@@ -2,7 +2,7 @@
 
 {% block content %}
     <h1>Movies</h1>
-    <a href="{{ url_for('movies.create_movie') }}" class="btn btn-primary mb-3">Create Movie</a>
+    <a href="#" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#movieModal" data-movie-id="create">Create Movie</a>
     <button type="button" class="btn btn-secondary mb-3" data-bs-toggle="modal" data-bs-target="#exportModal">
         Export
     </button>
@@ -156,27 +156,40 @@
                 var modalTitle = movieModal.querySelector('.modal-title');
                 var fullPageEditLink = document.getElementById('full-page-edit-link');
 
-                // Set the title and form action
-                modalTitle.textContent = 'Edit Movie ' + movieId;
-                movieModalForm.action = '/movies/edit/' + movieId;
-                fullPageEditLink.href = '/movies/edit/' + movieId;
+                if (movieId === 'create') {
+                    modalTitle.textContent = 'Create Movie';
+                    movieModalForm.action = '{{ url_for("movies.create_movie") }}';
+                    fullPageEditLink.href = '{{ url_for("movies.create_movie") }}';
+                    movieModalForm.reset();
+                    if (commentDisplay && commentTextarea) {
+                        commentTextarea.value = '';
+                        commentDisplay.innerHTML = '';
+                    }
+                    deleteMovieBtn.style.display = 'none';
+                } else {
+                    deleteMovieBtn.style.display = 'block';
+                    // Set the title and form action
+                    modalTitle.textContent = 'Edit Movie ' + movieId;
+                    movieModalForm.action = '/movies/edit/' + movieId;
+                    fullPageEditLink.href = '/movies/edit/' + movieId;
 
-                // Fetch movie data and populate the form
-                fetch('/movie/' + movieId + '/json')
-                    .then(response => response.json())
-                    .then(data => {
-                        movieModalForm.title.value = data.title;
-                        movieModalForm.genre.value = data.genre;
-                        movieModalForm.rating.value = data.rating;
-                        movieModalForm.comment.value = data.comment;
+                    // Fetch movie data and populate the form
+                    fetch('/movie/' + movieId + '/json')
+                        .then(response => response.json())
+                        .then(data => {
+                            movieModalForm.title.value = data.title;
+                            movieModalForm.genre.value = data.genre;
+                            movieModalForm.rating.value = data.rating;
+                            movieModalForm.comment.value = data.comment;
 
-                        // Update markdown display
-                        if (commentDisplay && commentTextarea) {
-                            commentTextarea.value = data.comment || '';
-                            commentDisplay.innerHTML = marked.parse(commentTextarea.value);
-                        }
-                    })
-                    .catch(error => console.error('Error fetching movie data:', error));
+                            // Update markdown display
+                            if (commentDisplay && commentTextarea) {
+                                commentTextarea.value = data.comment || '';
+                                commentDisplay.innerHTML = marked.parse(commentTextarea.value);
+                            }
+                        })
+                        .catch(error => console.error('Error fetching movie data:', error));
+                }
             });
             
             deleteMovieBtn.addEventListener('click', function() {

@@ -2,7 +2,7 @@
 
 {% block content %}
     <h1>Habits</h1>
-    <a href="{{ url_for('habits.create_habit') }}" class="btn btn-primary mb-3">Create Habit</a>
+    <a href="#" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#habitModal" data-habit-id="create">Create Habit</a>
     <table class="table">
         <thead>
             <tr>
@@ -88,6 +88,7 @@ function logHabit(habitId, date, isDone, index = null) {
 document.addEventListener('DOMContentLoaded', function() {
     var habitModal = document.getElementById('habitModal');
     var currentHabitId;
+    var deleteHabitBtn = document.getElementById('delete-habit-btn');
     habitModal.addEventListener('show.bs.modal', function (event) {
         var button = event.relatedTarget;
         var habitId = button.getAttribute('data-habit-id');
@@ -96,36 +97,30 @@ document.addEventListener('DOMContentLoaded', function() {
         var form = habitModal.querySelector('#habit-modal-form');
         var fullPageEditLink = document.getElementById('full-page-edit-link');
 
-        // Set the title and form action
-        modalTitle.textContent = 'Edit Habit ' + habitId;
-        form.action = '/habits/edit/' + habitId;
-        fullPageEditLink.href = '/habits/edit/' + habitId;
+        if (habitId === 'create') {
+            modalTitle.textContent = 'Create Habit';
+            form.action = '{{ url_for("habits.create_habit") }}';
+            fullPageEditLink.href = '{{ url_for("habits.create_habit") }}';
+            form.reset();
+            deleteHabitBtn.style.display = 'none';
+        } else {
+            deleteHabitBtn.style.display = 'block';
+            // Set the title and form action
+            modalTitle.textContent = 'Edit Habit ' + habitId;
+            form.action = '/habits/edit/' + habitId;
+            fullPageEditLink.href = '/habits/edit/' + habitId;
 
-        // Fetch habit data and populate the form
-        fetch('/habit/' + habitId + '/json')
-            .then(response => response.json())
-            .then(data => {
-                form.name.value = data.name;
-                form.description.value = data.description;
-                form.start_date.value = data.start_date ? data.start_date.substring(0, 10) : '';
-                form.end_date.value = data.end_date ? data.end_date.substring(0, 10) : '';
-                form.strategy_type.value = data.strategy_type;
-                form.strategy_params.value = JSON.stringify(data.strategy_params);
-            });
-    });
-
-    var deleteHabitBtn = document.getElementById('delete-habit-btn');
-    deleteHabitBtn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to delete this habit?')) {
-            fetch('/habit/delete/' + currentHabitId, {
-                method: 'POST',
-            }).then(response => {
-                if (response.ok) {
-                    window.location.reload();
-                } else {
-                    alert('Error deleting habit.');
-                }
-            });
+            // Fetch habit data and populate the form
+            fetch('/habit/' + habitId + '/json')
+                .then(response => response.json())
+                .then(data => {
+                    form.name.value = data.name;
+                    form.description.value = data.description;
+                    form.start_date.value = data.start_date ? data.start_date.substring(0, 10) : '';
+                    form.end_date.value = data.end_date ? data.end_date.substring(0, 10) : '';
+                    form.strategy_type.value = data.strategy_type;
+                    form.strategy_params.value = JSON.stringify(data.strategy_params);
+                });
         }
     });
 });
