@@ -10,3 +10,4 @@ APScheduler
 python-telegram-bot
 redis
 rq
+mypy

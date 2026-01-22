@@ -2,10 +2,11 @@ import logging
 import asyncio
 from telegram import Bot
 from flask import current_app, Flask
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-async def send_telegram_message(chat_id: str, message: str, app_instance: Flask = None):
+async def send_telegram_message(chat_id: str, message: str, app_instance: Optional[Flask] = None):
     """
     Sends a Telegram message to a specified chat_id.
     Can accept a Flask app instance if called outside an existing app context.

@@ -3,6 +3,12 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flask_sqlalchemy.model import Model
+else:
+    Model = db.Model
 
 class TaskStatus(enum.Enum):
     OPEN = 'OPEN'
@@ -22,7 +28,7 @@ class UserRole(enum.Enum):
     ADMIN = 'ADMIN'
     TRUSTED = 'TRUSTED'
 
-class User(UserMixin, db.Model):
+class User(UserMixin, Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
     password_hash = db.Column(db.String(128))
@@ -46,7 +52,7 @@ class User(UserMixin, db.Model):
 def load_user(id):
     return User.query.get(int(id))
 
-class Task(db.Model):
+class Task(Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     title = db.Column(db.String(140))
@@ -61,10 +67,13 @@ class Task(db.Model):
     notify_at = db.Column(db.DateTime)
     planned_start_notified = db.Column(db.Boolean, default=False)
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def __repr__(self):
         return f'<Task {self.title}>'
 
-class Habit(db.Model):
+class Habit(Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     name = db.Column(db.String(140))
@@ -75,10 +84,13 @@ class Habit(db.Model):
     strategy_params = db.Column(db.JSON)
     habit_logs = db.relationship('HabitLog', backref='habit', lazy='dynamic')
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def __repr__(self):
         return f'<Habit {self.name}>'
 
-class HabitLog(db.Model):
+class HabitLog(Model):
     id = db.Column(db.Integer, primary_key=True)
     habit_id = db.Column(db.Integer, db.ForeignKey('habit.id'))
     date = db.Column(db.Date, default=datetime.utcnow)
@@ -88,13 +100,16 @@ class HabitLog(db.Model):
     def __repr__(self):
         return f'<HabitLog {self.id}>'
 
-class Movie(db.Model):
+class Movie(Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     title = db.Column(db.String(140))
     genre = db.Column(db.String(50))
     rating = db.Column(db.Integer)
     comment = db.Column(db.Text)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f'<Movie {self.title}>'
