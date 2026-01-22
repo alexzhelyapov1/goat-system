@@ -1,4 +1,5 @@
-from flask import render_template, redirect, url_for, flash, request, jsonify
+from flask import render_template, redirect, url_for, flash, request, jsonify, Response
+import json
 from flask_login import login_required, current_user
 from app.movies import bp
 from app.services.movie_service import MovieService
@@ -73,6 +74,29 @@ def export_movies():
         exported_movie = {field: movie_dict.get(field) for field in fields}
         movies_to_export.append(exported_movie)
         
-    response = jsonify(movies_to_export)
+    response_data = json.dumps(movies_to_export, ensure_ascii=False, indent=4)
+    response = Response(response_data, mimetype='application/json; charset=utf-8')
     response.headers['Content-Disposition'] = 'attachment; filename=movies.json'
     return response
+
+@bp.route('/movies/import', methods=['POST'])
+@login_required
+def import_movies():
+    if 'file' not in request.files:
+        flash('No file part')
+        return redirect(url_for('movies.movies'))
+    file = request.files['file']
+    if file.filename == '':
+        flash('No selected file')
+        return redirect(url_for('movies.movies'))
+    if file:
+        try:
+            movies_data = json.load(file)
+            for movie_data in movies_data:
+                movie_data.pop('id', None)
+                movie = MovieCreate(**movie_data)
+                MovieService.create_movie(movie, current_user.id)
+            flash('Movies imported successfully!')
+        except (json.JSONDecodeError, ValidationError) as e:
+            flash(f'Error importing movies: {e}')
+        return redirect(url_for('movies.movies'))

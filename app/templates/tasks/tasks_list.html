@@ -12,8 +12,82 @@
             <a href="{{ url_for('tasks.tasks', type='ROUTINE') }}" class="btn btn-{{ 'primary' if current_filter == 'ROUTINE' else 'secondary' }}">Routine</a>
         </div>
         <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#taskModal" data-task-id="create">Create Task</a>
+        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#exportTasksModal">
+            Export
+        </button>
+        <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#importTasksModal">
+            Import
+        </button>
     </div>
     <div class="list-group">
+
+    <!-- Import Modal -->
+    <div class="modal fade" id="importTasksModal" tabindex="-1" aria-labelledby="importTasksModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importTasksModalLabel">Import Tasks</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('tasks.import_tasks') }}" method="post" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="file" class="form-label">Select JSON file</label>
+                            <input class="form-control" type="file" name="file" id="file" accept=".json">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Import</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal fade" id="exportTasksModal" tabindex="-1" aria-labelledby="exportTasksModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportTasksModalLabel">Export Tasks</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Select fields to export:</p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="title" id="export-title" checked>
+                        <label class="form-check-label" for="export-title">
+                            Title
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="status" id="export-status">
+                        <label class="form-check-label" for="export-status">
+                            Status
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="type" id="export-type" checked>
+                        <label class="form-check-label" for="export-type">
+                            Type
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="details" id="export-details">
+                        <label class="form-check-label" for="export-details">
+                            Details
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="export-tasks-btn">Export</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
         {% for task in tasks %}
             <div class="list-group-item {% if task.type.value == 'INBOX' %}list-group-item-inbox{% elif task.type.value == 'ROUTINE' %}list-group-item-routine{% elif task.type.value == 'CURRENT' %}list-group-item-current{% endif %}">
                 <div class="d-flex w-100 justify-content-between">
@@ -190,6 +264,35 @@
                         }
                     });
                 }
+            });
+
+            var exportTasksModalEl = document.getElementById('exportTasksModal');
+            var exportTasksModal = new bootstrap.Modal(exportTasksModalEl);
+            var exportTasksBtn = document.getElementById('export-tasks-btn');
+
+            exportTasksBtn.addEventListener('click', function() {
+                var selectedFields = [];
+                var checkboxes = document.querySelectorAll('#exportTasksModal .form-check-input');
+                checkboxes.forEach(function(checkbox) {
+                    if (checkbox.checked) {
+                        selectedFields.push(checkbox.value);
+                    }
+                });
+
+                var queryString = selectedFields.map(field => 'fields=' + field).join('&');
+                fetch('/tasks/export?' + queryString)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        var url = window.URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'tasks.json';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        // Close the modal after export
+                        exportTasksModal.hide();
+                    });
             });
         });
     </script>
