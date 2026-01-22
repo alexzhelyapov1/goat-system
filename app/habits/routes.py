@@ -61,7 +61,7 @@ def create_habit():
                 strategy_type=request.form['strategy_type'],
                 strategy_params=strategy_params
             )
-            HabitService.create_habit(habit_data)
+            HabitService.create_habit(habit_data, current_user.id)
             flash('Habit created successfully!')
             return redirect(url_for('habits.habits'))
         except (ValidationError, json.JSONDecodeError, ValueError) as e:
@@ -121,6 +121,10 @@ def delete_habit(habit_id):
 @login_required
 def log_habit():
     habit_id = request.form['habit_id']
+    habit = HabitService.get_habit(habit_id)
+    if habit.user_id != current_user.id:
+        flash('You are not authorized to log this habit.')
+        return redirect(url_for('habits.habits'))
     log_date_str = request.form['date']
     is_done = request.form.get('is_done') == 'true'
     log_date = date.fromisoformat(log_date_str)

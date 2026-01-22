@@ -54,7 +54,7 @@ def create_task():
             if form_data.get('planned_start'):
                 form_data['type'] = 'CALENDAR'
             task_data = TaskCreate(**form_data)
-            TaskService.create_task(task_data)
+            TaskService.create_task(task_data, current_user.id)
             flash('Task created successfully!')
             return redirect(request.referrer or url_for('tasks.tasks'))
         except ValidationError as e:

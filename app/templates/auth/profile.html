@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Profile</h1>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">User Information</h5>
+                    <p><strong>Username:</strong> {{ user.username }}</p>
+                    <p><strong>Role:</strong> {{ user.role.value }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Telegram Integration</h5>
+                    {% if user.telegram_chat_id %}
+                        <p class="text-success">
+                            <i class="bi bi-check-circle-fill"></i> Your account is linked to Telegram.
+                        </p>
+                        <p><strong>Telegram Username:</strong> {{ user.telegram_username or 'Not set' }}</p>
+                        <p><strong>Telegram Chat ID:</strong> {{ user.telegram_chat_id }}</p>
+                        <form action="{{ url_for('auth.telegram_disconnect') }}" method="post">
+                            <button type="submit" class="btn btn-danger">Unlink Telegram</button>
+                        </form>
+                    {% else %}
+                        <p>Link your account to Telegram to receive notifications.</p>
+                        <button id="connect-telegram-btn" class="btn btn-primary">Connect with Telegram</button>
+                        <div id="error-message" class="text-danger mt-2" style="display: none;"></div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not user.telegram_chat_id %}
+    <script>
+        document.getElementById('connect-telegram-btn').addEventListener('click', function() {
+            fetch("{{ url_for('auth.telegram_connect') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Include CSRF token if your app uses it
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.token && data.bot_username) {
+                    const telegramUrl = `https://t.me/${data.bot_username}?start=${data.token}`;
+                    window.location.href = telegramUrl;
+                } else {
+                    throw new Error('Failed to get token from server.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const errorDiv = document.getElementById('error-message');
+                errorDiv.textContent = 'Could not connect to Telegram. Please try again later.';
+                errorDiv.style.display = 'block';
+            });
+        });
+    </script>
+    {% endif %}
+{% endblock %}

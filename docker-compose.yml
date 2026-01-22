@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: sh -c "flask db upgrade && gunicorn --workers 3 --bind 0.0.0.0:5000 run:app"
+    ports:
+      - "5000:5000"
+    volumes:
+      - sqlite_data:/app/data
+    env_file:
+      - ./.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  bot:
+    build: .
+    command: sh -c "flask db upgrade && python bot.py"
+    volumes:
+      - sqlite_data:/app/data
+    env_file:
+      - ./.env
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+  worker:
+    build: .
+    command: sh -c "flask db upgrade && python worker.py"
+    volumes:
+      - sqlite_data:/app/data
+    env_file:
+      - ./.env
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+  redis:
+    image: redis:alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:

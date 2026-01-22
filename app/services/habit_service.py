@@ -1,7 +1,6 @@
 from app import db
 from app.models import Habit, HabitLog
 from app.schemas import HabitCreate
-from flask_login import current_user
 from app.services.habit_strategies import DailyStrategy, WeeklyStrategy
 from datetime import date, timedelta
 
@@ -11,8 +10,8 @@ class HabitService:
         return Habit.query.filter_by(user_id=user_id).all()
 
     @staticmethod
-    def create_habit(habit_data: HabitCreate):
-        habit = Habit(**habit_data.model_dump(), user_id=current_user.id)
+    def create_habit(habit_data: HabitCreate, user_id: int):
+        habit = Habit(**habit_data.model_dump(), user_id=user_id)
         db.session.add(habit)
         db.session.commit()
         return habit

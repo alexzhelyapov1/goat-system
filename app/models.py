@@ -17,10 +17,18 @@ class TaskType(enum.Enum):
     REST = 'REST'
     ROUTINE = 'ROUTINE'
 
+class UserRole(enum.Enum):
+    USER = 'USER'
+    ADMIN = 'ADMIN'
+    TRUSTED = 'TRUSTED'
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), index=True, unique=True)
     password_hash = db.Column(db.String(128))
+    telegram_chat_id = db.Column(db.String(64), unique=True)
+    telegram_username = db.Column(db.String(64))
+    role = db.Column(db.Enum(UserRole), default=UserRole.USER)
     tasks = db.relationship('Task', backref='author', lazy='dynamic')
     habits = db.relationship('Habit', backref='author', lazy='dynamic')
     movies = db.relationship('Movie', backref='author', lazy='dynamic')
@@ -51,6 +59,7 @@ class Task(db.Model):
     planned_end = db.Column(db.DateTime)
     suspend_due = db.Column(db.DateTime)
     notify_at = db.Column(db.DateTime)
+    planned_start_notified = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return f'<Task {self.title}>'

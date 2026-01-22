@@ -1,7 +1,6 @@
 from app import db
 from app.models import Task
 from app.schemas import TaskCreate
-from flask_login import current_user
 
 class TaskService:
     @staticmethod
@@ -19,8 +18,8 @@ class TaskService:
         return Task.query.get(task_id)
 
     @staticmethod
-    def create_task(task_data: TaskCreate):
-        task = Task(**task_data.model_dump(exclude_unset=True), user_id=current_user.id)
+    def create_task(task_data: TaskCreate, user_id: int):
+        task = Task(**task_data.model_dump(exclude_unset=True), user_id=user_id)
         db.session.add(task)
         db.session.commit()
         return task

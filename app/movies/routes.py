@@ -25,7 +25,7 @@ def create_movie():
     if request.method == 'POST':
         try:
             movie_data = MovieCreate(**request.form)
-            MovieService.create_movie(movie_data)
+            MovieService.create_movie(movie_data, current_user.id)
             flash('Movie created successfully!')
             return redirect(url_for('movies.movies'))
         except ValidationError as e:

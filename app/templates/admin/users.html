@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">User Management</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Current Role</th>
+                        <th>Set Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if user.role.name == 'ADMIN' %}bg-danger
+                                {% elif user.role.name == 'TRUSTED' %}bg-success
+                                {% else %}bg-secondary
+                                {% endif %}">
+                                {{ user.role.name }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if user.id != current_user.id %}
+                            <form action="{{ url_for('admin.set_role', user_id=user.id) }}" method="post" class="d-flex">
+                                <select name="role" class="form-select form-select-sm me-2">
+                                    {% for role in roles %}
+                                    <option value="{{ role }}" {% if user.role.name == role %}selected{% endif %}>
+                                        {{ role }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                            </form>
+                            {% else %}
+                            <small class="text-muted">Cannot change own role</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -17,3 +17,4 @@ __pycache__/
 context.txt
 prompts
 instance/
+*.log

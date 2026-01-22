@@ -60,8 +60,19 @@
                         <a class="nav-link" href="{{ url_for('auth.register') }}">Register</a>
                     </li>
                     {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            {{ current_user.username }}
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarUserDropdown">
+                            {% if current_user.role.name == 'ADMIN' %}
+                                <li><a class="dropdown-item" href="{{ url_for('admin.users') }}">Admin</a></li>
+                            {% endif %}
+                            <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}">Profile</a></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('auth.trigger_error') }}">Trigger Test Error</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+                        </ul>
                     </li>
                     {% endif %}
                 </ul>

@@ -7,3 +7,6 @@ alembic
 gunicorn
 python-dotenv
 APScheduler
+python-telegram-bot
+redis
+rq

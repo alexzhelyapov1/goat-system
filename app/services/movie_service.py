@@ -1,7 +1,6 @@
 from app import db
 from app.models import Movie
 from app.schemas import MovieCreate
-from flask_login import current_user
 
 class MovieService:
     @staticmethod
@@ -13,8 +12,8 @@ class MovieService:
         return Movie.query.get(movie_id)
 
     @staticmethod
-    def create_movie(movie_data: MovieCreate):
-        movie = Movie(**movie_data.model_dump(), user_id=current_user.id)
+    def create_movie(movie_data: MovieCreate, user_id: int):
+        movie = Movie(**movie_data.model_dump(), user_id=user_id)
         db.session.add(movie)
         db.session.commit()
         return movie

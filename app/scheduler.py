@@ -1,26 +1,45 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.models import Task, TaskType
 from app import db
-from datetime import datetime
+from datetime import datetime, timedelta
+from app.queue import q
 
-def check_suspended_tasks(app):
+def check_tasks(app):
     with app.app_context():
-        tasks = Task.query.filter(Task.suspend_due <= datetime.utcnow()).all()
-        for task in tasks:
+        now = datetime.utcnow()
+        
+        # Check suspended tasks
+        suspended_tasks = Task.query.filter(Task.suspend_due <= now).all()
+        for task in suspended_tasks:
             task.type = TaskType.CURRENT
             task.suspend_due = None
-        db.session.commit()
 
-def check_notifications(app):
-    with app.app_context():
-        tasks = Task.query.filter(Task.notify_at <= datetime.utcnow()).all()
-        for task in tasks:
-            print(f"Notification for task: {task.title}")
+        # Check notifications
+        
+        # Notify_at
+        tasks_to_notify = Task.query.filter(Task.notify_at <= now, Task.notify_at != None).all()
+        for task in tasks_to_notify:
+            if task.author.telegram_chat_id:
+                message = f"Reminder for task: {task.title} (ID: {task.id})"
+                q.enqueue('app.tasks_rq.send_telegram_message', task.author.telegram_chat_id, message)
             task.notify_at = None
+
+        # Planned_start
+        one_hour_from_now = now + timedelta(hours=1)
+        tasks_to_remind = Task.query.filter(
+            Task.planned_start > now, 
+            Task.planned_start <= one_hour_from_now,
+            Task.planned_start_notified == False
+        ).all()
+        for task in tasks_to_remind:
+            if task.author.telegram_chat_id:
+                message = f"Task starting soon: {task.title} (ID: {task.id})"
+                q.enqueue('app.tasks_rq.send_telegram_message', task.author.telegram_chat_id, message)
+                task.planned_start_notified = True
+
         db.session.commit()
 
 def init_scheduler(app):
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=check_suspended_tasks, args=[app], trigger="interval", seconds=60)
-    scheduler.add_job(func=check_notifications, args=[app], trigger="interval", seconds=60)
+    scheduler.add_job(func=check_tasks, args=[app], trigger="interval", seconds=60)
     scheduler.start()
