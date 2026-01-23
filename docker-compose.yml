@@ -13,7 +13,7 @@ services:
 
   web:
     build: .
-    command: sh -c "flask db upgrade && gunicorn --workers 3 --bind 0.0.0.0:5000 run:app"
+    command: sh -c "flask db upgrade && gunicorn --workers 1 --bind 0.0.0.0:5000 run:app"
     volumes:
       - sqlite_data:/app/data
     env_file:
@@ -30,7 +30,7 @@ services:
 
   bot:
     build: .
-    command: sh -c "flask db upgrade && python bot.py"
+    command: sh -c "python bot.py"
     volumes:
       - sqlite_data:/app/data
     env_file:
@@ -40,11 +40,11 @@ services:
       redis:
         condition: service_healthy
       web:
-        condition: service_started
+        condition: service_healthy
 
   worker:
     build: .
-    command: sh -c "flask db upgrade && python worker.py"
+    command: sh -c "python worker.py"
     volumes:
       - sqlite_data:/app/data
     env_file:
@@ -54,7 +54,7 @@ services:
       redis:
         condition: service_healthy
       web:
-        condition: service_started
+        condition: service_healthy
 
   redis:
     image: redis:alpine
