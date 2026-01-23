@@ -23,4 +23,4 @@ jobs:
             # Make sure the deployment script is executable
             # chmod +x /home/${{ secrets.SERVER_USER }}/goat-system/scripts/deploy_docker.sh
             # Execute the new Docker deployment script
-            /var/www/goat-system/scripts/deploy_docker.sh
+            /home/alex/goat-system/scripts/deploy_docker.sh

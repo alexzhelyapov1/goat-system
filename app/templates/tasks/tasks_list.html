@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Tasks</h1>
+    <h1>Tasks:</h1>
     <div class="d-flex justify-content-between mb-3">
         <div>
             <a href="{{ url_for('tasks.tasks', type='all') }}" class="btn btn-{{ 'primary' if current_filter == 'all' else 'secondary' }}">All</a>

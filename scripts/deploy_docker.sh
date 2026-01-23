@@ -4,7 +4,7 @@ set -e # Exit immediately if a command exits with a non-zero status.
 echo "Navigating to the project directory..."
 # Assumes the project is in a directory named 'goat-system' in the user's home folder.
 # If your path is different, please update it here.
-APP_DIR="/var/www/goat-system"
+APP_DIR="/home/alex/goat-system"
 cd "$APP_DIR"
 
 echo "Pulling latest changes from the main branch..."

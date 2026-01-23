@@ -29,7 +29,7 @@ set -e
 
 # --- Configuration ---
 # The directory where the application will be installed.
-APP_DIR="/var/www/goat-system"
+APP_DIR="/home/alex/goat-system"
 # The git repository URL.
 GIT_URL="https://github.com/alexzhelyapov1/goat-system.git" # <-- CHANGE THIS
 # The user that will run the application.
@@ -75,7 +75,7 @@ flask db upgrade
 echo "--- Setting ownership ---"
 # Change ownership of the directory to the application user
 sudo chown -R ${APP_USER}:${APP_USER} ${APP_DIR}
-# sudo chown -R www-data:www-data /var/www/goat-system
+# sudo chown -R www-data:www-data /home/alex/goat-system
 
 echo "--- Setup complete! ---"
 echo "To run the application, activate the venv ('source venv/bin/activate') and run Gunicorn."
@@ -110,9 +110,9 @@ To ensure the application runs automatically and restarts on failure, run it as 
     [Service]
     User=www-data
     Group=www-data
-    WorkingDirectory=/var/www/goat-system
-    Environment="PATH=/var/www/goat-system/venv/bin"
-    ExecStart=/var/www/goat-system/venv/bin/gunicorn --workers 1 --bind unix:goat-system.sock -m 007 run:app
+    WorkingDirectory=/home/alex/goat-system
+    Environment="PATH=/home/alex/goat-system/venv/bin"
+    ExecStart=/home/alex/goat-system/venv/bin/gunicorn --workers 1 --bind unix:goat-system.sock -m 007 run:app
 
     [Install]
     WantedBy=multi-user.target
@@ -145,7 +145,7 @@ You will need a web server like Nginx to act as a reverse proxy, directing traff
 
         location / {
             include proxy_params;
-            proxy_pass http://unix:/var/www/goat-system/goat-system.sock;
+            proxy_pass http://unix:/home/alex/goat-system/goat-system.sock;
         }
     }
     ```

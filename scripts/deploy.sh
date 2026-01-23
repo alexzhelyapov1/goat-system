@@ -4,7 +4,7 @@
 set -e
 
 # --- Configuration ---
-APP_DIR="/var/www/goat-system"
+APP_DIR="/home/alex/goat-system"
 SYSTEMD_SERVICE="goat-system"
 
 echo "--- Starting deployment ---"
