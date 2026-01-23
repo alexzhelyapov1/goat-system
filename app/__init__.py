@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, session
+from flask import Flask, redirect, url_for, session, render_template
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
 from app.extensions import db, login_manager, migrate
@@ -62,6 +62,10 @@ def create_app(config_class=config.Config):
     from app.models import User
     import traceback
     import asyncio
+
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return render_template('404.html'), 404
 
     @app.errorhandler(Exception)
     def handle_exception(e):
