@@ -52,6 +52,10 @@ def create_app(config_class=config.Config):
     from app import cli
     cli.register_commands(app)
 
+    @app.route('/health')
+    def health_check():
+        return 'OK'
+
     @app.route('/')
     def index():
         if current_user.is_authenticated:
