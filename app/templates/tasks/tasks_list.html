@@ -217,36 +217,32 @@
                                 detailsDisplay.innerHTML = marked.parse(detailsTextarea.value);
                             }
 
+                            function setLocalTimeValue(dateString, dateInput, timeInput) {
+                                if (dateString) {
+                                    // Create a date object, assuming the string is in UTC. Append 'Z' to treat it as UTC if no timezone is specified.
+                                    const date = new Date(dateString.endsWith('Z') || dateString.includes('+') ? dateString : dateString + 'Z');
 
-                            if (data.deadline) {
-                                taskModalForm.deadline_date.value = data.deadline.substring(0, 10);
-                                taskModalForm.deadline_time.value = data.deadline.substring(11, 16);
-                            } else {
-                                taskModalForm.deadline_date.value = '';
-                                taskModalForm.deadline_time.value = '';
+                                    // Get local date part in YYYY-MM-DD format
+                                    const year = date.getFullYear();
+                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                    const day = String(date.getDate()).padStart(2, '0');
+                                    dateInput.value = `${year}-${month}-${day}`;
+
+                                    // Get local time part in HH:MM format
+                                    const hours = String(date.getHours()).padStart(2, '0');
+                                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                                    timeInput.value = `${hours}:${minutes}`;
+                                } else {
+                                    dateInput.value = '';
+                                    timeInput.value = '';
+                                }
                             }
-                            if (data.planned_start) {
-                                taskModalForm.planned_start_date.value = data.planned_start.substring(0, 10);
-                                taskModalForm.planned_start_time.value = data.planned_start.substring(11, 16);
-                            } else {
-                                taskModalForm.planned_start_date.value = '';
-                                taskModalForm.planned_start_time.value = '';
-                            }
-                            if (data.planned_end) {
-                                taskModalForm.planned_end_date.value = data.planned_end.substring(0, 10);
-                                taskModalForm.planned_end_time.value = data.planned_end.substring(11, 16);
-                            }
-                            if (data.suspend_due) {
-                                taskModalForm.suspend_due_date.value = data.suspend_due.substring(0, 10);
-                                taskModalForm.suspend_due_time.value = data.suspend_due.substring(11, 16);
-                            }
-                            if (data.notify_at) {
-                                taskModalForm.notify_at_date.value = data.notify_at.substring(0, 10);
-                                taskModalForm.notify_at_time.value = data.notify_at.substring(11, 16);
-                            } else {
-                                taskModalForm.notify_at_date.value = '';
-                                taskModalForm.notify_at_time.value = '';
-                            }
+
+                            setLocalTimeValue(data.deadline, taskModalForm.deadline_date, taskModalForm.deadline_time);
+                            setLocalTimeValue(data.planned_start, taskModalForm.planned_start_date, taskModalForm.planned_start_time);
+                            setLocalTimeValue(data.planned_end, taskModalForm.planned_end_date, taskModalForm.planned_end_time);
+                            setLocalTimeValue(data.suspend_due, taskModalForm.suspend_due_date, taskModalForm.suspend_due_time);
+                            setLocalTimeValue(data.notify_at, taskModalForm.notify_at_date, taskModalForm.notify_at_time);
                         })
                         .catch(error => console.error('Error fetching task data:', error));
                 }

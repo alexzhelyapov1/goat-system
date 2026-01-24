@@ -45,7 +45,7 @@ def create_task():
                 if date_val:
                     if not time_val:
                         time_val = '00:00'
-                    form_data[key] = f'{date_val}T{time_val}'
+                    form_data[key] = f'{date_val}T{time_val}+03:00'
                 else:
                     form_data[key] = None
 
@@ -80,7 +80,7 @@ def edit_task(task_id):
                 if date_val:
                     if not time_val:
                         time_val = '00:00'
-                    form_data[key] = f'{date_val}T{time_val}'
+                    form_data[key] = f'{date_val}T{time_val}+03:00'
                 else:
                     form_data[key] = None
 

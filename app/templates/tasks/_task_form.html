@@ -22,43 +22,43 @@
             </div>
             <div class="mb-3">
                 <label for="duration" class="form-label">Duration (minutes)</label>
-                <input type="number" class="form-control" id="duration" name="duration" value="{{ task.duration if task else '' }}">
+                <input type="number" class="form-control" id="duration" name="duration" value="{{ task.duration if task and task.duration else '' }}">
             </div>
         </div>
         <div class="col-md-6">
             <div class="mb-3">
                 <label for="deadline_date" class="form-label">Deadline</label>
-                <div class="input-group">
-                    <input type="date" class="form-control" id="deadline_date" name="deadline_date" value="{{ task.deadline.strftime('%Y-%m-%d') if task and task.deadline else '' }}">
-                    <input type="time" class="form-control" id="deadline_time" name="deadline_time" value="{{ task.deadline.strftime('%H:%M') if task and task.deadline else '' }}">
+                <div class="input-group" data-iso-date="{{ task.deadline.isoformat() if task and task.deadline else '' }}">
+                    <input type="date" class="form-control" id="deadline_date" name="deadline_date">
+                    <input type="time" class="form-control" id="deadline_time" name="deadline_time">
                 </div>
             </div>
             <div class="mb-3">
                 <label for="planned_start_date" class="form-label">Planned Start</label>
-                <div class="input-group">
-                    <input type="date" class="form-control" id="planned_start_date" name="planned_start_date" value="{{ task.planned_start.strftime('%Y-%m-%d') if task and task.planned_start else '' }}">
-                    <input type="time" class="form-control" id="planned_start_time" name="planned_start_time" value="{{ task.planned_start.strftime('%H:%M') if task and task.planned_start else '' }}">
+                <div class="input-group" data-iso-date="{{ task.planned_start.isoformat() if task and task.planned_start else '' }}">
+                    <input type="date" class="form-control" id="planned_start_date" name="planned_start_date">
+                    <input type="time" class="form-control" id="planned_start_time" name="planned_start_time">
                 </div>
             </div>
             <div class="mb-3">
                 <label for="planned_end_date" class="form-label">Planned End</label>
-                <div class="input-group">
-                    <input type="date" class="form-control" id="planned_end_date" name="planned_end_date" value="{{ task.planned_end.strftime('%Y-%m-%d') if task and task.planned_end else '' }}">
-                    <input type="time" class="form-control" id="planned_end_time" name="planned_end_time" value="{{ task.planned_end.strftime('%H:%M') if task and task.planned_end else '' }}">
+                <div class="input-group" data-iso-date="{{ task.planned_end.isoformat() if task and task.planned_end else '' }}">
+                    <input type="date" class="form-control" id="planned_end_date" name="planned_end_date">
+                    <input type="time" class="form-control" id="planned_end_time" name="planned_end_time">
                 </div>
             </div>
             <div class="mb-3">
                 <label for="suspend_due_date" class="form-label">Suspend Due</label>
-                <div class="input-group">
-                    <input type="date" class="form-control" id="suspend_due_date" name="suspend_due_date" value="{{ task.suspend_due.strftime('%Y-%m-%d') if task and task.suspend_due else '' }}">
-                    <input type="time" class="form-control" id="suspend_due_time" name="suspend_due_time" value="{{ task.suspend_due.strftime('%H:%M') if task and task.suspend_due else '' }}">
+                <div class="input-group" data-iso-date="{{ task.suspend_due.isoformat() if task and task.suspend_due else '' }}">
+                    <input type="date" class="form-control" id="suspend_due_date" name="suspend_due_date">
+                    <input type="time" class="form-control" id="suspend_due_time" name="suspend_due_time">
                 </div>
             </div>
             <div class="mb-3">
-                <label for="notify_at_date" class="form-label">Notify At</label>
-                <div class="input-group">
-                    <input type="date" class="form-control" id="notify_at_date" name="notify_at_date" value="{{ task.notify_at.strftime('%Y-%m-%d') if task and task.notify_at else '' }}">
-                    <input type="time" class="form-control" id="notify_at_time" name="notify_at_time" value="{{ task.notify_at.strftime('%H:%M') if task and task.notify_at else '' }}">
+                <label for="notify_at_date" class="form-label">Notify At1</label>
+                <div class="input-group" data-iso-date="{{ task.notify_at.isoformat() if task and task.notify_at else '' }}">
+                    <input type="date" class="form-control" id="notify_at_date" name="notify_at_date">
+                    <input type="time" class="form-control" id="notify_at_time" name="notify_at_time">
                 </div>
             </div>
         </div>

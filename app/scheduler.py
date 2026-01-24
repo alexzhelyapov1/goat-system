@@ -1,12 +1,12 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.models import Task, TaskType
 from app import db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.queue import q
 
 def check_tasks(app):
     with app.app_context():
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Check suspended tasks
         suspended_tasks = Task.query.filter(Task.suspend_due <= now).all()

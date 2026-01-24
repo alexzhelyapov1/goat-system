@@ -61,4 +61,38 @@
             textarea.style.height = (textarea.scrollHeight) + 'px';
         }
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function setLocalTimeValue(dateString, dateInput, timeInput) {
+                if (dateString) {
+                    // Create a date object, assuming the string is in UTC. Append 'Z' to treat it as UTC if no timezone is specified.
+                    const date = new Date(dateString.endsWith('Z') || dateString.includes('+') ? dateString : dateString + 'Z');
+
+                    // Get local date part in YYYY-MM-DD format
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    dateInput.value = `${year}-${month}-${day}`;
+
+                    // Get local time part in HH:MM format
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    timeInput.value = `${hours}:${minutes}`;
+                } else {
+                    dateInput.value = '';
+                    timeInput.value = '';
+                }
+            }
+
+            const dateGroups = document.querySelectorAll('.input-group[data-iso-date]');
+            dateGroups.forEach(group => {
+                const dateString = group.dataset.isoDate;
+                const dateInput = group.querySelector('input[type="date"]');
+                const timeInput = group.querySelector('input[type="time"]');
+                if (dateInput && timeInput) {
+                    setLocalTimeValue(dateString, dateInput, timeInput);
+                }
+            });
+        });
+    </script>
 {% endblock %}
