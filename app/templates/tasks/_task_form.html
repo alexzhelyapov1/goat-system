@@ -55,7 +55,7 @@
                 </div>
             </div>
             <div class="mb-3">
-                <label for="notify_at_date" class="form-label">Notify At1</label>
+                <label for="notify_at_date" class="form-label">Notify At</label>
                 <div class="input-group" data-iso-date="{{ task.notify_at.isoformat() if task and task.notify_at else '' }}">
                     <input type="date" class="form-control" id="notify_at_date" name="notify_at_date">
                     <input type="time" class="form-control" id="notify_at_time" name="notify_at_time">
