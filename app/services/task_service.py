@@ -14,6 +14,10 @@ class TaskService:
         return query.all()
 
     @staticmethod
+    def get_all_tasks_for_user(user_id):
+        return Task.query.filter_by(user_id=user_id).all()
+
+    @staticmethod
     def get_task(task_id):
         return Task.query.get(task_id)
 

@@ -111,14 +111,14 @@ def delete_task(task_id):
 @login_required
 def export_tasks():
     fields = request.args.getlist('fields')
-    tasks = TaskService.get_tasks_by_user_and_type(current_user.id, 'all')
-    
+    tasks = TaskService.get_all_tasks_for_user(current_user.id)
+
     tasks_to_export = []
     for task in tasks:
         task_dict = TaskSchema.model_validate(task).model_dump(mode="json")
         exported_task = {field: task_dict.get(field) for field in fields}
         tasks_to_export.append(exported_task)
-        
+
     response_data = json.dumps(tasks_to_export, ensure_ascii=False, indent=4)
     response = Response(response_data, mimetype='application/json; charset=utf-8')
     response.headers['Content-Disposition'] = 'attachment; filename=tasks.json'

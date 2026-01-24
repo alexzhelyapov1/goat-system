@@ -1,6 +1,7 @@
 from pydantic import BaseModel, validator
 from typing import Optional
-from datetime import datetime, date
+from datetime import datetime, date, timezone
+from zoneinfo import ZoneInfo
 from app.models import TaskStatus, TaskType
 
 class UserBase(BaseModel):
@@ -26,6 +27,40 @@ class TaskBase(BaseModel):
     planned_end: Optional[datetime] = None
     suspend_due: Optional[datetime] = None
     notify_at: Optional[datetime] = None
+
+    @validator('notify_at', pre=True, always=True)
+    def convert_notify_at_to_utc(cls, v):
+        if v is None:
+            return v
+
+        moscow_tz = ZoneInfo("Europe/Moscow")
+
+        if isinstance(v, str):
+            # Attempt to parse common datetime formats
+            try:
+                dt_obj = datetime.fromisoformat(v)
+            except ValueError:
+                # Fallback for other formats, e.g., 'YYYY-MM-DD HH:MM:SS'
+                try:
+                    dt_obj = datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    raise ValueError("Invalid datetime format for notify_at")
+        elif isinstance(v, datetime):
+            dt_obj = v
+        else:
+            raise TypeError("notify_at must be a datetime object or a string")
+
+        # If naive, assume it's in Moscow timezone
+        if dt_obj.tzinfo is None:
+            dt_obj = dt_obj.replace(tzinfo=moscow_tz)
+        else:
+            # If already timezone-aware, convert it to Moscow timezone first to ensure consistency
+            dt_obj = dt_obj.astimezone(moscow_tz)
+
+        # Convert to UTC for storage
+        return dt_obj.astimezone(timezone.utc)
+
+
 
 class TaskCreate(TaskBase):
     pass
