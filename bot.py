@@ -33,10 +33,7 @@ app = create_app()
 
 def main():
     with app.app_context():
-        from app.scheduler import init_scheduler
-        if not app.config.get('TESTING', False):
-            init_scheduler(app)
-            
+
         token = app.config["TELEGRAM_BOT_TOKEN"]
         if not token:
             logger.warning("Telegram bot token not configured. Bot will not run.")

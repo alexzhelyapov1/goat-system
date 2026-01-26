@@ -37,24 +37,8 @@ def task_json(task_id):
 def create_task():
     if request.method == 'POST':
         try:
-            form_data = request.form.to_dict()
-            for key in ['deadline', 'planned_start', 'planned_end', 'suspend_due', 'notify_at']:
-                date_val = form_data.get(f'{key}_date')
-                time_val = form_data.get(f'{key}_time')
-
-                if date_val:
-                    if not time_val:
-                        time_val = '00:00'
-                    form_data[key] = f'{date_val}T{time_val}+03:00'
-                else:
-                    form_data[key] = None
-
-            if not form_data.get('duration'):
-                form_data['duration'] = None
-
-            if form_data.get('planned_start'):
-                form_data['type'] = 'CALENDAR'
-            task_data = TaskCreate(**form_data)
+            prepared_data = TaskService._prepare_data_from_form(request.form.to_dict())
+            task_data = TaskCreate(**prepared_data)
             TaskService.create_task(task_data, current_user.id)
             flash('Task created successfully!')
             return redirect(request.referrer or url_for('tasks.tasks'))
@@ -72,24 +56,8 @@ def edit_task(task_id):
         return redirect(url_for('tasks.tasks'))
     if request.method == 'POST':
         try:
-            form_data = request.form.to_dict()
-            for key in ['deadline', 'planned_start', 'planned_end', 'suspend_due', 'notify_at']:
-                date_val = form_data.get(f'{key}_date')
-                time_val = form_data.get(f'{key}_time')
-
-                if date_val:
-                    if not time_val:
-                        time_val = '00:00'
-                    form_data[key] = f'{date_val}T{time_val}+03:00'
-                else:
-                    form_data[key] = None
-
-            if not form_data.get('duration'):
-                form_data['duration'] = None
-
-            if form_data.get('planned_start'):
-                form_data['type'] = 'CALENDAR'
-            task_data = TaskCreate(**form_data)
+            prepared_data = TaskService._prepare_data_from_form(request.form.to_dict())
+            task_data = TaskCreate(**prepared_data)
             TaskService.update_task(task_id, task_data)
             flash('Task updated successfully!')
             return redirect(request.referrer or url_for('tasks.tasks'))

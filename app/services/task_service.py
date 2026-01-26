@@ -41,3 +41,29 @@ class TaskService:
         task = Task.query.get(task_id)
         db.session.delete(task)
         db.session.commit()
+
+    @staticmethod
+    def _prepare_data_from_form(form_data: dict) -> dict:
+        """Helper to process raw form data for task creation/updates."""
+        processed_data = form_data.copy()
+
+        for key in ['deadline', 'planned_start', 'planned_end', 'suspend_due', 'notify_at']:
+            date_val = processed_data.get(f'{key}_date')
+            time_val = processed_data.get(f'{key}_time')
+
+            if date_val:
+                if not time_val:
+                    time_val = '00:00'
+                # Combine date and time, assuming a default timezone if not provided.
+                # The format should be ISO 8601 compatible.
+                processed_data[key] = f'{date_val}T{time_val}:00' # Basic ISO format
+            else:
+                processed_data[key] = None
+        
+        if not processed_data.get('duration'):
+            processed_data['duration'] = None
+
+        if processed_data.get('planned_start'):
+            processed_data['type'] = 'CALENDAR'
+            
+        return processed_data
