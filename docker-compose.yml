@@ -9,9 +9,10 @@ services:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
     restart: unless-stopped
     depends_on:
-      - web
+      - frontend
+      - api
 
-  web:
+  frontend:
     build: .
     command: sh -c "flask db upgrade && gunicorn --workers 1 --bind 0.0.0.0:5000 run:app"
     volumes:
@@ -28,6 +29,20 @@ services:
       redis:
         condition: service_healthy
 
+  api:
+    build: .
+    command: sh -c "uvicorn main:app --host 0.0.0.0 --port 5001"
+    volumes:
+      - sqlite_data:/app/data
+    env_file:
+      - ./.env
+    restart: on-failure:3
+    depends_on:
+      redis:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+
   bot:
     build: .
     command: sh -c "python bot.py"
@@ -39,7 +54,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      web:
+      frontend:
         condition: service_healthy
 
   worker:
@@ -53,7 +68,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      web:
+      frontend:
         condition: service_healthy
 
   redis:
