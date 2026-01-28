@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.services.task_service import TaskService
 from app.schemas import TaskSchema, TaskCreate
@@ -57,3 +57,21 @@ def delete_task(task_id: int, current_user: User = Depends(get_current_user), db
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this task")
     TaskService.delete_task(db, task_id)
     return
+
+
+@router.get("/export", response_model=List[dict])
+def export_tasks(fields: List[str] = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    tasks = TaskService.get_all_tasks_for_user(db, current_user.id)
+    tasks_to_export = []
+    for task in tasks:
+        task_dict = TaskSchema.model_validate(task).model_dump(mode="json")
+        exported_task = {field: task_dict.get(field) for field in fields}
+        tasks_to_export.append(exported_task)
+    return tasks_to_export
+
+
+@router.post("/import")
+def import_tasks(tasks_data: List[TaskCreate], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    for task_data in tasks_data:
+        TaskService.create_task(db, task_data, current_user.id)
+    return {"message": "Tasks imported successfully!"}

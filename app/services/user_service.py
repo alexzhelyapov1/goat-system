@@ -1,18 +1,13 @@
+from sqlalchemy.orm import Session
 from app.models import User
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from werkzeug.security import check_password_hash
 
 
 class UserService:
     @staticmethod
-    def get_user_by_username(username: str):
-        return User.query.filter_by(username=username).first()
+    def get_user_by_username(db: Session, username: str):
+        return db.query(User).filter_by(username=username).first()
 
     @staticmethod
     def verify_password(plain_password, hashed_password):
-        return pwd_context.verify(plain_password, hashed_password)
-
-    @staticmethod
-    def get_password_hash(password):
-        return pwd_context.hash(password)
+        return check_password_hash(hashed_password, plain_password)

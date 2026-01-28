@@ -30,7 +30,7 @@ def get_current_user(
     username = decode_access_token(token)
     if username is None:
         raise credentials_exception
-    user = UserService.get_user_by_username(username)
+    user = UserService.get_user_by_username(db, username=username)
     if user is None:
         raise credentials_exception
     return user

@@ -1,30 +1,26 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify, session
-from flask_login import login_required, current_user
+from flask_login import login_required
 from app.habits import bp
-from app.services.habit_service import HabitService
-from app.schemas import HabitCreate, HabitSchema
-from pydantic import ValidationError, TypeAdapter
+from app.schemas import HabitSchema
+from pydantic import TypeAdapter
 from datetime import date, timedelta, datetime
-import json
 import httpx
 from typing import List
-from app.extensions import SessionLocal # Import SessionLocal for direct DB session
+
 
 API_BASE_URL = "http://api:5001"
 
-async def _make_api_request(method: str, endpoint: str, habit_id: int = None, json_data: dict = None):
+async def _make_api_request(method: str, endpoint: str, json_data: dict = None, params: dict = None):
     headers = {}
     if 'jwt_token' in session:
         headers["Authorization"] = f"Bearer {session['jwt_token']}"
 
     url = f"{API_BASE_URL}{endpoint}"
-    if habit_id:
-        url = f"{url}{habit_id}"
 
     async with httpx.AsyncClient() as client:
         try:
             if method == "GET":
-                response = await client.get(url, headers=headers)
+                response = await client.get(url, headers=headers, params=params)
             elif method == "POST":
                 response = await client.post(url, json=json_data, headers=headers)
             elif method == "PUT":
@@ -68,13 +64,22 @@ async def habits():
     end_date = today + timedelta(days=3)
     
     habits_with_logs = []
-    with SessionLocal() as db_session:
-        for habit in habits:
-            dates_with_status = HabitService.get_habit_dates_with_status(db_session, habit.id, start_date, end_date)
+    for habit in habits:
+        try:
+            params = {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()}
+            response = await _make_api_request("GET", f"/habits/{habit.id}/dates-with-status", params=params)
+            dates_with_status_raw = response.json()
+            # Convert string keys back to date objects
+            dates_with_status = {date.fromisoformat(k): v for k, v in dates_with_status_raw.items()}
+            
             habits_with_logs.append({
                 "habit": habit,
                 "logs": dates_with_status
             })
+        except httpx.RequestError:
+            # If fetching logs for one habit fails, we can either skip it or show an error.
+            # For now, let's just not add it to the list.
+            flash(f"Could not load logs for habit '{habit.name}'.")
 
     return render_template('habits/habits_list.html', habits_with_logs=habits_with_logs, dates=[start_date + timedelta(days=i) for i in range(7)], today=today)
 

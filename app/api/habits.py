@@ -67,3 +67,20 @@ def log_habit(log_data: HabitLogBase, current_user: User = Depends(get_current_u
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to log this habit")
     HabitService.log_habit(db, log_data.habit_id, log_data.date, log_data.is_done, log_data.index)
     return {"success": True}
+
+
+@router.get("/{habit_id}/dates-with-status", response_model=dict[date, bool | list[bool]])
+def get_habit_dates_with_status(
+    habit_id: int,
+    start_date: date,
+    end_date: date,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    habit = HabitService.get_habit(db, habit_id)
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
+    if habit.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this habit")
+    
+    return HabitService.get_habit_dates_with_status(db, habit_id, start_date, end_date)

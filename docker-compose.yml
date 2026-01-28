@@ -14,33 +14,31 @@ services:
 
   frontend:
     build: .
-    command: sh -c "flask db upgrade && gunicorn --workers 1 --bind 0.0.0.0:5000 run:app"
+    command: sh -c "gunicorn --workers 1 --worker-class gevent --bind 0.0.0.0:5000 run:app"
+    volumes:
+      - sqlite_data:/app/data
+    env_file:
+      - ./.env
+    restart: on-failure:3
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build: .
+    command: sh -c "flask db upgrade && uvicorn main:app --host 0.0.0.0 --port 5001"
     volumes:
       - sqlite_data:/app/data
     env_file:
       - ./.env
     restart: on-failure:3
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 5s
       timeout: 3s
       retries: 5
     depends_on:
       redis:
-        condition: service_healthy
-
-  api:
-    build: .
-    command: sh -c "uvicorn main:app --host 0.0.0.0 --port 5001"
-    volumes:
-      - sqlite_data:/app/data
-    env_file:
-      - ./.env
-    restart: on-failure:3
-    depends_on:
-      redis:
-        condition: service_healthy
-      frontend:
         condition: service_healthy
 
   bot:
@@ -54,8 +52,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      frontend:
-        condition: service_healthy
 
   worker:
     build: .
@@ -67,8 +63,6 @@ services:
     restart: on-failure:3
     depends_on:
       redis:
-        condition: service_healthy
-      frontend:
         condition: service_healthy
 
   redis:

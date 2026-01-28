@@ -1,30 +1,26 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify, Response, session
 import json
-from flask_login import login_required, current_user
+from flask_login import login_required
 from app.movies import bp
-from app.services.movie_service import MovieService
-from app.schemas import MovieCreate, MovieSchema
+from app.schemas import MovieSchema
 from pydantic import ValidationError, TypeAdapter
 import httpx
 from typing import List
-from app.extensions import SessionLocal # Import SessionLocal for direct DB session
 
 
 API_BASE_URL = "http://api:5001"
 
-async def _make_api_request(method: str, endpoint: str, movie_id: int = None, json_data: dict = None):
+async def _make_api_request(method: str, endpoint: str, json_data: dict = None, params: dict = None):
     headers = {}
     if 'jwt_token' in session:
         headers["Authorization"] = f"Bearer {session['jwt_token']}"
 
     url = f"{API_BASE_URL}{endpoint}"
-    if movie_id:
-        url = f"{url}{movie_id}"
 
     async with httpx.AsyncClient() as client:
         try:
             if method == "GET":
-                response = await client.get(url, headers=headers)
+                response = await client.get(url, headers=headers, params=params)
             elif method == "POST":
                 response = await client.post(url, json=json_data, headers=headers)
             elif method == "PUT":
@@ -39,8 +35,6 @@ async def _make_api_request(method: str, endpoint: str, movie_id: int = None, js
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 401:
                 flash("Your session has expired. Please log in again.")
-                # Redirect to login page, this should be handled by client-side or
-                # a global Flask before_request if all API calls need auth
             elif e.response.status_code == 403:
                 flash("You are not authorized to perform this action.")
             else:
@@ -128,26 +122,23 @@ async def delete_movie(movie_id):
 
 @bp.route('/movies/export')
 @login_required
-def export_movies():
+async def export_movies():
     fields = request.args.getlist('fields')
-    # This still uses the service directly, as it's a specific feature.
-    # This can be migrated later.
-    movies = MovieService.get_movies_by_user(current_user.id)
-    
-    movies_to_export = []
-    for movie in movies:
-        movie_dict = MovieSchema.model_validate(movie).model_dump(mode="json")
-        exported_movie = {field: movie_dict.get(field) for field in fields}
-        movies_to_export.append(exported_movie)
+    try:
+        response = await _make_api_request("GET", "/movies/export", params={'fields': fields})
+        movies_to_export = response.json()
         
-    response_data = json.dumps(movies_to_export, ensure_ascii=False, indent=4)
-    response = Response(response_data, mimetype='application/json; charset=utf-8')
-    response.headers['Content-Disposition'] = 'attachment; filename=movies.json'
-    return response
+        response_data = json.dumps(movies_to_export, ensure_ascii=False, indent=4)
+        response = Response(response_data, mimetype='application/json; charset=utf-8')
+        response.headers['Content-Disposition'] = 'attachment; filename=movies.json'
+        return response
+    except httpx.RequestError as e:
+        flash(f"Error exporting movies: {e}")
+        return redirect(url_for('movies.movies'))
 
 @bp.route('/movies/import', methods=['POST'])
 @login_required
-def import_movies():
+async def import_movies():
     if 'file' not in request.files:
         flash('No file part')
         return redirect(url_for('movies.movies'))
@@ -158,13 +149,8 @@ def import_movies():
     if file:
         try:
             movies_data = json.load(file)
-            for movie_data in movies_data:
-                movie_data.pop('id', None)
-                # This still uses the service directly.
-                # This can be migrated later.
-                movie = MovieCreate(**movie_data)
-                MovieService.create_movie(movie, current_user.id)
+            await _make_api_request("POST", "/movies/import", json_data=movies_data)
             flash('Movies imported successfully!')
-        except (json.JSONDecodeError, ValidationError) as e:
+        except (json.JSONDecodeError, httpx.RequestError, httpx.HTTPStatusError) as e:
             flash(f'Error importing movies: {e}')
         return redirect(url_for('movies.movies'))

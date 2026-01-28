@@ -1,4 +1,4 @@
-Flask
+Flask[async]
 Flask-Login
 Flask-Migrate
 Flask-SQLAlchemy
@@ -13,6 +13,6 @@ rq
 fastapi
 uvicorn
 httpx
-python-jose[cryptography]
-passlib[bcrypt]
 python-multipart
+gevent
+python-jose[cryptography]

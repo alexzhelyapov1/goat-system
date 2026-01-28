@@ -1,27 +1,23 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify, Response, session
 import json
-from flask_login import login_required, current_user
+from flask_login import login_required
 from app.tasks import bp
-from app.services.task_service import TaskService
-from app.schemas import TaskCreate, TaskSchema
+from app.schemas import TaskSchema
 from pydantic import ValidationError, TypeAdapter
-from app.models import TaskStatus, TaskType, Task
+from app.models import TaskStatus, TaskType
 from datetime import datetime
 import httpx
 from typing import List
-from app.extensions import SessionLocal # Import SessionLocal for direct DB session
 
 
 API_BASE_URL = "http://api:5001"
 
-async def _make_api_request(method: str, endpoint: str, task_id: int = None, json_data: dict = None, params: dict = None):
+async def _make_api_request(method: str, endpoint: str, json_data: dict = None, params: dict = None):
     headers = {}
     if 'jwt_token' in session:
         headers["Authorization"] = f"Bearer {session['jwt_token']}"
 
     url = f"{API_BASE_URL}{endpoint}"
-    if task_id:
-        url = f"{url}{task_id}"
 
     async with httpx.AsyncClient() as client:
         try:
@@ -163,26 +159,23 @@ async def delete_task(task_id):
 
 @bp.route('/tasks/export')
 @login_required
-def export_tasks():
+async def export_tasks():
     fields = request.args.getlist('fields')
-    # This still uses the service directly, as it's a specific feature.
-    # This can be migrated later.
-    tasks = TaskService.get_all_tasks_for_user(current_user.id)
-
-    tasks_to_export = []
-    for task in tasks:
-        task_dict = TaskSchema.model_validate(task).model_dump(mode="json")
-        exported_task = {field: task_dict.get(field) for field in fields}
-        tasks_to_export.append(exported_task)
-
-    response_data = json.dumps(tasks_to_export, ensure_ascii=False, indent=4)
-    response = Response(response_data, mimetype='application/json; charset=utf-8')
-    response.headers['Content-Disposition'] = 'attachment; filename=tasks.json'
-    return response
+    try:
+        response = await _make_api_request("GET", "/tasks/export", params={'fields': fields})
+        tasks_to_export = response.json()
+        
+        response_data = json.dumps(tasks_to_export, ensure_ascii=False, indent=4)
+        response = Response(response_data, mimetype='application/json; charset=utf-8')
+        response.headers['Content-Disposition'] = 'attachment; filename=tasks.json'
+        return response
+    except httpx.RequestError as e:
+        flash(f"Error exporting tasks: {e}")
+        return redirect(url_for('tasks.tasks'))
 
 @bp.route('/tasks/import', methods=['POST'])
 @login_required
-def import_tasks():
+async def import_tasks():
     if 'file' not in request.files:
         flash('No file part')
         return redirect(url_for('tasks.tasks'))
@@ -193,14 +186,10 @@ def import_tasks():
     if file:
         try:
             tasks_data = json.load(file)
-            for task_data in tasks_data:
-                task_data.pop('id', None)
-                # This still uses the service directly.
-                # This can be migrated later.
-                task = TaskCreate(**task_data)
-                TaskService.create_task(task, current_user.id)
+            # We use _make_api_request to send the JSON data to the import endpoint
+            await _make_api_request("POST", "/tasks/import", json_data=tasks_data)
             flash('Tasks imported successfully!')
-        except (json.JSONDecodeError, ValidationError) as e:
+        except (json.JSONDecodeError, httpx.RequestError, httpx.HTTPStatusError) as e:
             flash(f'Error importing tasks: {e}')
         return redirect(url_for('tasks.tasks'))
 

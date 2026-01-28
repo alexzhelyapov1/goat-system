@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.services.movie_service import MovieService
 from app.schemas import MovieSchema, MovieCreate
 from app.auth.dependencies import get_current_user, get_db
 from app.models import User
 from typing import List
+from app.services.movie_service import MovieService
 
 router = APIRouter(
     prefix="/movies",
@@ -49,3 +50,19 @@ def delete_movie(movie_id: int, current_user: User = Depends(get_current_user), 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this movie")
     MovieService.delete_movie(db, movie_id)
     return
+
+@router.get("/export", response_model=List[dict])
+def export_movies(fields: List[str] = Query(None), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    movies = MovieService.get_movies_by_user(db, current_user.id)
+    movies_to_export = []
+    for movie in movies:
+        movie_dict = MovieSchema.model_validate(movie).model_dump(mode="json")
+        exported_movie = {field: movie_dict.get(field) for field in fields}
+        movies_to_export.append(exported_movie)
+    return movies_to_export
+
+@router.post("/import")
+def import_movies(movies_data: List[MovieCreate], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    for movie_data in movies_data:
+        MovieService.create_movie(db, movie_data, current_user.id)
+    return {"message": "Movies imported successfully!"}

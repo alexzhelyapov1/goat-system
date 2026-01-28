@@ -14,7 +14,7 @@ class Config:
     # Flask-related configurations
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'you-will-never-guess' # This is for Flask's session management
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'app.db')
+        'sqlite:///' + os.path.join(basedir, 'data', 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = 5400
     TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')

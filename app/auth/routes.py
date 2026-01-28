@@ -78,16 +78,7 @@ async def login():
             response = await make_api_request(
                 "POST",
                 "/token",
-                json_data={"username": request.form['username'], "password": request.form['password']},
-                # FastAPI's OAuth2PasswordRequestForm expects form-data, not json.
-                # When using make_api_request with json_data, it sends as application/json.
-                # If FastAPI expects form-urlencoded, the API client would need to support that,
-                # or we change FastAPI to expect JSON for /token endpoint.
-                # For now, let's assume json is acceptable, or modify FastAPI.
-                # Given OAuth2PasswordRequestForm, it's expecting form data.
-                # Let's directly use httpx.post with data= for form-urlencoded.
-                # This makes the make_api_request less useful for this specific case,
-                # but it's an edge case due to OAuth2PasswordRequestForm.
+                form_data={"username": request.form['username'], "password": request.form['password']},
             )
             token_data = response.json()
             session['jwt_token'] = token_data['access_token']
