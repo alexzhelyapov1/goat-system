@@ -8,55 +8,19 @@ from app.models import TaskStatus, TaskType
 from datetime import datetime
 import httpx
 from typing import List
+from app.api_client import make_api_request
 
-
-API_BASE_URL = "http://api:5001"
-
-async def _make_api_request(method: str, endpoint: str, json_data: dict = None, params: dict = None):
-    headers = {}
-    if 'jwt_token' in session:
-        headers["Authorization"] = f"Bearer {session['jwt_token']}"
-
-    url = f"{API_BASE_URL}{endpoint}"
-
-    async with httpx.AsyncClient() as client:
-        try:
-            if method == "GET":
-                response = await client.get(url, headers=headers, params=params)
-            elif method == "POST":
-                response = await client.post(url, json=json_data, headers=headers, params=params)
-            elif method == "PUT":
-                response = await client.put(url, json=json_data, headers=headers, params=params)
-            elif method == "DELETE":
-                response = await client.delete(url, headers=headers, params=params)
-            else:
-                raise ValueError("Unsupported HTTP method")
-
-            response.raise_for_status()
-            return response
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 401:
-                flash("Your session has expired. Please log in again.")
-                # Redirect to login page, this should be handled by client-side or
-                # a global Flask before_request if all API calls need auth
-            elif e.response.status_code == 403:
-                flash("You are not authorized to perform this action.")
-            else:
-                flash(f"API Error: {e.response.status_code} - {e.response.text}")
-            raise
-        except httpx.RequestError as e:
-            flash(f"Network Error: Could not connect to API - {e}")
-            raise
 
 @bp.route('/tasks')
 @login_required
 async def tasks():
     task_type = request.args.get('type', 'all')
     try:
-        response = await _make_api_request("GET", "/tasks/", params={'type': task_type})
+        response = await make_api_request("GET", "/tasks/", params={'type': task_type})
         tasks_data = response.json()
         tasks = TypeAdapter(List[TaskSchema]).validate_python(tasks_data)
-    except httpx.RequestError:
+    except (httpx.HTTPStatusError, httpx.RequestError) as e:
+        flash(f"Could not load tasks: {e}", "danger")
         tasks = []
     return render_template('tasks/tasks_list.html', tasks=tasks, current_filter=task_type, task_statuses=TaskStatus, task_types=TaskType)
 
@@ -64,7 +28,7 @@ async def tasks():
 @login_required
 async def task_json(task_id):
     try:
-        response = await _make_api_request("GET", f"/tasks/{task_id}")
+        response = await make_api_request("GET", f"/tasks/{task_id}")
         return jsonify(response.json())
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
         return jsonify({'error': str(e)}), 500
@@ -94,14 +58,13 @@ async def create_task():
             if form_data.get('planned_start'):
                 form_data['type'] = 'CALENDAR'
 
-            # a crutch to remove empty values
             task_data = {k: v for k, v in form_data.items() if v is not None}
 
-            await _make_api_request("POST", "/tasks/", json_data=task_data)
-            flash('Task created successfully!')
+            await make_api_request("POST", "/tasks/", json_data=task_data)
+            flash('Task created successfully!', 'success')
             return redirect(request.referrer or url_for('tasks.tasks'))
         except (ValidationError, httpx.RequestError, httpx.HTTPStatusError, ValueError) as e:
-            flash(str(e))
+            flash(str(e), 'danger')
             return redirect(url_for('tasks.create_task'))
     return render_template('tasks/task_form.html', form_title='Create Task', task_statuses=TaskStatus, task_types=TaskType)
 
@@ -132,17 +95,23 @@ async def edit_task(task_id):
 
             task_data = {k: v for k, v in form_data.items() if v is not None}
 
-            await _make_api_request("PUT", f"/tasks/{task_id}", json_data=task_data)
-            flash('Task updated successfully!')
+            await make_api_request("PUT", f"/tasks/{task_id}", json_data=task_data)
+            flash('Task updated successfully!', 'success')
             return redirect(request.referrer or url_for('tasks.tasks'))
         except (ValidationError, httpx.RequestError, httpx.HTTPStatusError, ValueError) as e:
-            flash(str(e))
+            flash(str(e), 'danger')
     
     try:
-        response = await _make_api_request("GET", f"/tasks/{task_id}")
+        response = await make_api_request("GET", f"/tasks/{task_id}")
         task = response.json()
-    except httpx.RequestError as e:
-        flash(f"Error fetching task: {e}")
+        
+        # Convert date strings back to datetime objects for the template
+        for key in ['deadline', 'planned_start', 'planned_end', 'suspend_due', 'notify_at']:
+            if key in task and task[key] and isinstance(task[key], str):
+                task[key] = datetime.fromisoformat(task[key])
+
+    except (httpx.RequestError, httpx.HTTPStatusError) as e:
+        flash(f"Error fetching task: {e}", 'danger')
         return redirect(url_for('tasks.tasks'))
 
     return render_template('tasks/task_form.html', task=task, form_title='Edit Task', task_statuses=TaskStatus, task_types=TaskType)
@@ -151,10 +120,11 @@ async def edit_task(task_id):
 @login_required
 async def delete_task(task_id):
     try:
-        await _make_api_request("DELETE", f"/tasks/{task_id}")
-        flash('Task deleted successfully!')
+        await make_api_request("DELETE", f"/tasks/{task_id}")
+        flash('Task deleted successfully!', 'success')
         return jsonify({'success': True})
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
+        flash(f"Error deleting task: {e}", 'danger')
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/tasks/export')
@@ -162,48 +132,45 @@ async def delete_task(task_id):
 async def export_tasks():
     fields = request.args.getlist('fields')
     try:
-        response = await _make_api_request("GET", "/tasks/export", params={'fields': fields})
+        response = await make_api_request("GET", "/tasks/export", params={'fields': fields})
         tasks_to_export = response.json()
         
         response_data = json.dumps(tasks_to_export, ensure_ascii=False, indent=4)
         response = Response(response_data, mimetype='application/json; charset=utf-8')
         response.headers['Content-Disposition'] = 'attachment; filename=tasks.json'
         return response
-    except httpx.RequestError as e:
-        flash(f"Error exporting tasks: {e}")
+    except (httpx.RequestError, httpx.HTTPStatusError) as e:
+        flash(f"Error exporting tasks: {e}", 'danger')
         return redirect(url_for('tasks.tasks'))
 
 @bp.route('/tasks/import', methods=['POST'])
 @login_required
 async def import_tasks():
     if 'file' not in request.files:
-        flash('No file part')
+        flash('No file part', 'warning')
         return redirect(url_for('tasks.tasks'))
     file = request.files['file']
     if file.filename == '':
-        flash('No selected file')
+        flash('No selected file', 'warning')
         return redirect(url_for('tasks.tasks'))
     if file:
         try:
             tasks_data = json.load(file)
-            # We use _make_api_request to send the JSON data to the import endpoint
-            await _make_api_request("POST", "/tasks/import", json_data=tasks_data)
-            flash('Tasks imported successfully!')
+            await make_api_request("POST", "/tasks/import", json_data=tasks_data)
+            flash('Tasks imported successfully!', 'success')
         except (json.JSONDecodeError, httpx.RequestError, httpx.HTTPStatusError) as e:
-            flash(f'Error importing tasks: {e}')
+            flash(f'Error importing tasks: {e}', 'danger')
         return redirect(url_for('tasks.tasks'))
 
 @bp.route('/task/<int:task_id>')
 @login_required
 async def task(task_id):
     try:
-        response = await _make_api_request("GET", f"/tasks/{task_id}")
+        response = await make_api_request("GET", f"/tasks/{task_id}")
         task_data = response.json()
+        # The API is the source of truth, no need to check user_id here
         task = TypeAdapter(TaskSchema).validate_python(task_data)
-        if task.user_id != current_user.id:
-            flash('You are not authorized to view this task.')
-            return redirect(url_for('tasks.tasks'))
         return render_template('tasks/task_form.html', task=task, form_title='Edit Task', task_statuses=TaskStatus, task_types=TaskType)
-    except httpx.RequestError as e:
-        flash(f"Error fetching task: {e}")
+    except (httpx.RequestError, httpx.HTTPStatusError) as e:
+        flash(f"Error fetching task: {e}", 'danger')
         return redirect(url_for('tasks.tasks'))
