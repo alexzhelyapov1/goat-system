@@ -1,27 +1,27 @@
 <div class="mb-3">
     <label for="name" class="form-label">Name</label>
-    <input type="text" class="form-control" id="name" name="name" value="{{ habit.name if habit else '' }}" required>
+    <input type="text" class="form-control" id="name" name="name" required>
 </div>
 <div class="mb-3">
     <label for="description" class="form-label">Description</label>
-    <textarea class="form-control" id="description" name="description" rows="3">{{ habit.description if habit else '' }}</textarea>
+    <textarea class="form-control" id="description" name="description" rows="3"></textarea>
 </div>
 <div class="mb-3">
     <label for="start_date" class="form-label">Start Date</label>
-    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ habit.start_date.strftime('%Y-%m-%d') if habit and habit.start_date else '' }}">
+    <input type="date" class="form-control" id="start_date" name="start_date">
 </div>
 <div class="mb-3">
     <label for="end_date" class="form-label">End Date</label>
-    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ habit.end_date.strftime('%Y-%m-%d') if habit and habit.end_date else '' }}">
+    <input type="date" class="form-control" id="end_date" name="end_date">
 </div>
 <div class="mb-3">
     <label for="strategy_type" class="form-label">Strategy Type</label>
     <select class="form-select" id="strategy_type" name="strategy_type">
-        <option value="daily" {% if habit and habit.strategy_type == 'daily' %}selected{% endif %}>Daily</option>
-        <option value="weekly" {% if habit and habit.strategy_type == 'weekly' %}selected{% endif %}>Weekly</option>
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
     </select>
 </div>
 <div class="mb-3">
     <label for="strategy_params" class="form-label">Strategy Parameters (JSON)</label>
-    <input type="text" class="form-control" id="strategy_params" name="strategy_params" value="{{ habit.strategy_params if habit and habit.strategy_params else '' }}">
+    <input type="text" class="form-control" id="strategy_params" name="strategy_params">
 </div>

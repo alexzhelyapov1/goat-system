@@ -7,6 +7,7 @@ from app.schemas import UserCreate
 from pydantic import ValidationError
 import uuid
 from app.queue import redis_conn
+from app.auth.security import create_access_token
 
 @bp.route('/telegram/connect', methods=['POST'])
 @login_required
@@ -29,6 +30,15 @@ def telegram_disconnect():
     db.session.commit()
     flash('Your Telegram account has been unlinked.')
     return redirect(url_for('auth.profile'))
+
+
+@bp.route('/generate-token')
+@login_required
+def generate_token():
+    """Generate a JWT for the currently logged in user."""
+    token = create_access_token(data={"sub": str(current_user.id)})
+    return jsonify(access_token=token)
+
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():

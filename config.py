@@ -14,3 +14,7 @@ class Config:
     TELEGRAM_BOT_USERNAME = os.environ.get('TELEGRAM_BOT_USERNAME')
 
     REDIS_URL = os.environ.get('REDIS_URL') or 'redis://'
+
+    # JWT Settings
+    JWT_ALGORITHM = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES = 30

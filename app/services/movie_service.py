@@ -1,33 +1,37 @@
-from app import db
 from app.models import Movie
 from app.schemas import MovieCreate
+from sqlalchemy.orm import Session
 
 class MovieService:
-    @staticmethod
-    def get_movies_by_user(user_id):
-        return Movie.query.filter_by(user_id=user_id).all()
+    def __init__(self, db_session: Session):
+        self.db_session = db_session
 
-    @staticmethod
-    def get_movie(movie_id):
-        return Movie.query.get(movie_id)
+    def get_movies_by_user(self, user_id):
+        return self.db_session.query(Movie).filter_by(user_id=user_id).all()
 
-    @staticmethod
-    def create_movie(movie_data: MovieCreate, user_id: int):
+    def get_movie(self, movie_id):
+        return self.db_session.query(Movie).get(movie_id)
+
+    def create_movie(self, movie_data: MovieCreate, user_id: int):
         movie = Movie(**movie_data.model_dump(), user_id=user_id)
-        db.session.add(movie)
-        db.session.commit()
+        self.db_session.add(movie)
+        self.db_session.commit()
+        self.db_session.refresh(movie)
         return movie
 
-    @staticmethod
-    def update_movie(movie_id, movie_data: MovieCreate):
-        movie = Movie.query.get(movie_id)
+    def update_movie(self, movie_id, movie_data: MovieCreate):
+        movie = self.db_session.query(Movie).get(movie_id)
+        if not movie:
+            return None
         for key, value in movie_data.model_dump(exclude_unset=True).items():
             setattr(movie, key, value)
-        db.session.commit()
+        self.db_session.commit()
+        self.db_session.refresh(movie)
         return movie
 
-    @staticmethod
-    def delete_movie(movie_id):
-        movie = Movie.query.get(movie_id)
-        db.session.delete(movie)
-        db.session.commit()
+    def delete_movie(self, movie_id):
+        movie = self.db_session.query(Movie).get(movie_id)
+        if movie:
+            self.db_session.delete(movie)
+            self.db_session.commit()
+        return movie

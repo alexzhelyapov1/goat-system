@@ -46,19 +46,15 @@ class TaskSchema(TaskBase):
 class HabitBase(BaseModel):
     name: str
     description: Optional[str] = None
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
     strategy_type: str
     strategy_params: dict
 
-    @validator('start_date', 'end_date', pre=True)
-    def parse_date(cls, v):
-        if not v:
-            return None
-        if isinstance(v, str):
-            return datetime.strptime(v, '%Y-%m-%d').date()
-        if isinstance(v, datetime):
-            return v.date()
+    @validator('start_date', 'end_date', pre=False, always=True)
+    def normalize_datetimes_to_utc(cls, v):
+        if v and v.tzinfo:
+            return v.astimezone(timezone.utc).replace(tzinfo=None)
         return v
 
 class HabitCreate(HabitBase):
@@ -67,6 +63,27 @@ class HabitCreate(HabitBase):
 class HabitSchema(HabitBase):
     id: int
     user_id: int
+
+    class Config:
+        from_attributes = True
+
+class HabitLogBase(BaseModel):
+    habit_id: int
+    date: date
+    is_done: bool
+    index: int = 0
+
+    @validator('date', pre=True)
+    def parse_date_only(cls, v):
+        if isinstance(v, datetime):
+            return v.date()
+        return v
+
+class HabitLogCreate(HabitLogBase):
+    pass
+
+class HabitLogSchema(HabitLogBase):
+    id: int
 
     class Config:
         from_attributes = True

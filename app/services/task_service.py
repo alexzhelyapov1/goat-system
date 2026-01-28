@@ -1,11 +1,13 @@
-from app import db
+from sqlalchemy.orm import Session
 from app.models import Task
 from app.schemas import TaskCreate
 
 class TaskService:
-    @staticmethod
-    def get_tasks_by_user_and_type(user_id, task_type=None):
-        query = Task.query.filter_by(user_id=user_id)
+    def __init__(self, db_session: Session):
+        self.db = db_session
+
+    def get_tasks_by_user_and_type(self, user_id, task_type=None):
+        query = self.db.query(Task).filter_by(user_id=user_id)
         if task_type:
             if task_type == 'all':
                 query = query.filter(Task.type.in_(['CURRENT', 'ROUTINE', 'INBOX']))
@@ -13,34 +15,29 @@ class TaskService:
                 query = query.filter_by(type=task_type)
         return query.all()
 
-    @staticmethod
-    def get_all_tasks_for_user(user_id):
-        return Task.query.filter_by(user_id=user_id).all()
+    def get_all_tasks_for_user(self, user_id):
+        return self.db.query(Task).filter_by(user_id=user_id).all()
 
-    @staticmethod
-    def get_task(task_id):
-        return Task.query.get(task_id)
+    def get_task(self, task_id):
+        return self.db.query(Task).get(task_id)
 
-    @staticmethod
-    def create_task(task_data: TaskCreate, user_id: int):
+    def create_task(self, task_data: TaskCreate, user_id: int):
         task = Task(**task_data.model_dump(exclude_unset=True), user_id=user_id)
-        db.session.add(task)
-        db.session.commit()
+        self.db.add(task)
+        self.db.commit()
         return task
 
-    @staticmethod
-    def update_task(task_id, task_data: TaskCreate):
-        task = Task.query.get(task_id)
+    def update_task(self, task_id, task_data: TaskCreate):
+        task = self.db.query(Task).get(task_id)
         for key, value in task_data.model_dump(exclude_unset=True).items():
             setattr(task, key, value)
-        db.session.commit()
+        self.db.commit()
         return task
 
-    @staticmethod
-    def delete_task(task_id):
-        task = Task.query.get(task_id)
-        db.session.delete(task)
-        db.session.commit()
+    def delete_task(self, task_id):
+        task = self.db.query(Task).get(task_id)
+        self.db.delete(task)
+        self.db.commit()
 
     @staticmethod
     def _prepare_data_from_form(form_data: dict) -> dict:

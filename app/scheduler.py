@@ -41,5 +41,5 @@ def check_tasks(app):
 
 def init_scheduler(app):
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=check_tasks, args=[app], trigger="interval", seconds=60)
+    scheduler.add_job(func=check_tasks, args=[app], trigger="interval", seconds=3)
     scheduler.start()

@@ -7,79 +7,19 @@ from app.schemas import TaskCreate, TaskSchema
 from pydantic import ValidationError
 from app.models import TaskStatus, TaskType, Task
 from datetime import datetime
+from app.extensions import db
 
 @bp.route('/tasks')
 @login_required
 def tasks():
-    task_type = request.args.get('type', 'all')
-    tasks = TaskService.get_tasks_by_user_and_type(current_user.id, task_type)
-    return render_template('tasks/tasks_list.html', tasks=tasks, current_filter=task_type, task_statuses=TaskStatus, task_types=TaskType)
-
-@bp.route('/task/<int:task_id>')
-@login_required
-def task(task_id):
-    task = TaskService.get_task(task_id)
-    if task.user_id != current_user.id:
-        flash('You are not authorized to view this task.')
-        return redirect(url_for('tasks.tasks'))
-    return render_template('tasks/task_form.html', task=task, form_title='Edit Task', task_statuses=TaskStatus, task_types=TaskType)
-
-@bp.route('/task/<int:task_id>/json')
-@login_required
-def task_json(task_id):
-    task = TaskService.get_task(task_id)
-    if task.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    return jsonify(TaskSchema.model_validate(task).model_dump(mode="json"))
-
-@bp.route('/tasks/create', methods=['GET', 'POST'])
-@login_required
-def create_task():
-    if request.method == 'POST':
-        try:
-            prepared_data = TaskService._prepare_data_from_form(request.form.to_dict())
-            task_data = TaskCreate(**prepared_data)
-            TaskService.create_task(task_data, current_user.id)
-            flash('Task created successfully!')
-            return redirect(request.referrer or url_for('tasks.tasks'))
-        except ValidationError as e:
-            flash(str(e.errors()))
-            return redirect(url_for('tasks.create_task'))
-    return render_template('tasks/task_form.html', form_title='Create Task', task_statuses=TaskStatus, task_types=TaskType)
-
-@bp.route('/task/edit/<int:task_id>', methods=['GET', 'POST'])
-@login_required
-def edit_task(task_id):
-    task = TaskService.get_task(task_id)
-    if task.user_id != current_user.id:
-        flash('You are not authorized to edit this task.')
-        return redirect(url_for('tasks.tasks'))
-    if request.method == 'POST':
-        try:
-            prepared_data = TaskService._prepare_data_from_form(request.form.to_dict())
-            task_data = TaskCreate(**prepared_data)
-            TaskService.update_task(task_id, task_data)
-            flash('Task updated successfully!')
-            return redirect(request.referrer or url_for('tasks.tasks'))
-        except ValidationError as e:
-            flash(str(e.errors()))
-    return render_template('tasks/task_form.html', task=task, form_title='Edit Task', task_statuses=TaskStatus, task_types=TaskType)
-
-@bp.route('/task/delete/<int:task_id>', methods=['POST'])
-@login_required
-def delete_task(task_id):
-    task = TaskService.get_task(task_id)
-    if task.user_id != current_user.id:
-        return jsonify({'error': 'Unauthorized'}), 403
-    TaskService.delete_task(task_id)
-    flash('Task deleted successfully!')
-    return jsonify({'success': True})
+    return render_template('tasks/tasks_list.html')
 
 @bp.route('/tasks/export')
 @login_required
 def export_tasks():
+    task_service = TaskService(db_session=db.session)
     fields = request.args.getlist('fields')
-    tasks = TaskService.get_all_tasks_for_user(current_user.id)
+    tasks = task_service.get_all_tasks_for_user(current_user.id)
 
     tasks_to_export = []
     for task in tasks:
@@ -95,6 +35,7 @@ def export_tasks():
 @bp.route('/tasks/import', methods=['POST'])
 @login_required
 def import_tasks():
+    task_service = TaskService(db_session=db.session)
     if 'file' not in request.files:
         flash('No file part')
         return redirect(url_for('tasks.tasks'))
@@ -108,7 +49,7 @@ def import_tasks():
             for task_data in tasks_data:
                 task_data.pop('id', None)
                 task = TaskCreate(**task_data)
-                TaskService.create_task(task, current_user.id)
+                task_service.create_task(task, current_user.id)
             flash('Tasks imported successfully!')
         except (json.JSONDecodeError, ValidationError) as e:
             flash(f'Error importing tasks: {e}')

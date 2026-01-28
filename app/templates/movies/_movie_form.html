@@ -1,19 +1,19 @@
 <form action="" method="post" novalidate id="movie-modal-form">
     <div class="mb-3">
         <label for="title" class="form-label">Title</label>
-        <input type="text" class="form-control" id="title" name="title" value="{{ movie.title if movie else '' }}" required>
+        <input type="text" class="form-control" id="title" name="title" required>
     </div>
     <div class="mb-3">
         <label for="genre" class="form-label">Genre</label>
-        <input type="text" class="form-control" id="genre" name="genre" value="{{ movie.genre if movie else '' }}">
+        <input type="text" class="form-control" id="genre" name="genre">
     </div>
     <div class="mb-3">
         <label for="rating" class="form-label">Rating</label>
-        <input type="number" class="form-control" id="rating" name="rating" min="0" max="10" value="{{ movie.rating if movie else '' }}">
+        <input type="number" class="form-control" id="rating" name="rating" min="0" max="10">
     </div>
     <div class="mb-3">
         <label for="comment" class="form-label">Comment</label>
         <div id="comment-display" style="border: 1px solid #ced4da; padding: .375rem .75rem; border-radius: .25rem; min-height: 100px;"></div>
-        <textarea class="form-control d-none" id="comment" name="comment" rows="5">{{ movie.comment if movie else '' }}</textarea>
+        <textarea class="form-control d-none" id="comment" name="comment" rows="5"></textarea>
     </div>
 </form>

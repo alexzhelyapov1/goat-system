@@ -1,49 +1,51 @@
-from app import db
 from app.models import Habit, HabitLog
 from app.schemas import HabitCreate
 from app.services.habit_strategies import DailyStrategy, WeeklyStrategy
 from datetime import date, timedelta
+from sqlalchemy.orm import Session
 
 class HabitService:
-    @staticmethod
-    def get_habits_by_user(user_id):
-        return Habit.query.filter_by(user_id=user_id).all()
+    def __init__(self, db_session: Session):
+        self.db_session = db_session
 
-    @staticmethod
-    def create_habit(habit_data: HabitCreate, user_id: int):
+    def get_habits_by_user(self, user_id):
+        return self.db_session.query(Habit).filter_by(user_id=user_id).all()
+
+    def create_habit(self, habit_data: HabitCreate, user_id: int):
         habit = Habit(**habit_data.model_dump(), user_id=user_id)
-        db.session.add(habit)
-        db.session.commit()
+        self.db_session.add(habit)
+        self.db_session.commit()
+        self.db_session.refresh(habit) # Refresh the habit to get its ID after commit
         return habit
 
-    @staticmethod
-    def get_habit(habit_id):
-        return Habit.query.get(habit_id)
+    def get_habit(self, habit_id):
+        return self.db_session.query(Habit).get(habit_id)
 
-    @staticmethod
-    def update_habit(habit_id, habit_data: HabitCreate):
-        habit = Habit.query.get(habit_id)
+    def update_habit(self, habit_id, habit_data: HabitCreate):
+        habit = self.db_session.query(Habit).get(habit_id)
+        if not habit:
+            return None
         for field, value in habit_data.model_dump().items():
             setattr(habit, field, value)
-        db.session.commit()
+        self.db_session.commit()
+        self.db_session.refresh(habit)
         return habit
 
-    @staticmethod
-    def delete_habit(habit_id):
-        habit = Habit.query.get(habit_id)
-        db.session.delete(habit)
-        db.session.commit()
+    def delete_habit(self, habit_id):
+        habit = self.db_session.query(Habit).get(habit_id)
+        if habit:
+            self.db_session.delete(habit)
+            self.db_session.commit()
+        return habit # Return the deleted habit or None
 
-    @staticmethod
-    def get_habit_logs(habit_id, start_date, end_date):
-        return HabitLog.query.filter(
+    def get_habit_logs(self, habit_id, start_date, end_date):
+        return self.db_session.query(HabitLog).filter(
             HabitLog.habit_id == habit_id,
             HabitLog.date >= start_date,
             HabitLog.date <= end_date
         ).all()
 
-    @staticmethod
-    def get_strategy(habit: Habit):
+    def get_strategy(self, habit: Habit):
         if habit.strategy_type == 'daily':
             return DailyStrategy()
         elif habit.strategy_type == 'weekly':
@@ -51,15 +53,17 @@ class HabitService:
         else:
             raise ValueError(f"Unknown strategy type: {habit.strategy_type}")
 
-    @staticmethod
-    def get_habit_dates_with_status(habit_id, start_date, end_date):
-        habit = Habit.query.get(habit_id)
-        logs = HabitService.get_habit_logs(habit_id, start_date, end_date)
+    def get_habit_dates_with_status(self, habit_id, start_date, end_date):
+        habit = self.db_session.query(Habit).get(habit_id)
+        if not habit:
+            return {}
+        logs = self.get_habit_logs(habit_id, start_date, end_date)
         log_dates = {(log.date, log.index): log.is_done for log in logs}
         dates_with_status = {}
         delta = end_date - start_date
 
         frequency = 1
+        # Check if strategy_params exists and contains 'frequency' for daily strategy
         if habit.strategy_type == 'daily' and habit.strategy_params and 'frequency' in habit.strategy_params:
             frequency = habit.strategy_params['frequency']
 
@@ -71,14 +75,14 @@ class HabitService:
                 dates_with_status[day] = log_dates.get((day, 0), False)
         return dates_with_status
 
-    @staticmethod
-    def log_habit(habit_id, log_date, is_done, index=0):
-        log = HabitLog.query.filter_by(habit_id=habit_id, date=log_date, index=index).first()
+    def log_habit(self, habit_id, log_date, is_done, index=0):
+        log = self.db_session.query(HabitLog).filter_by(habit_id=habit_id, date=log_date, index=index).first()
         if log:
             log.is_done = is_done
         else:
             log = HabitLog(habit_id=habit_id, date=log_date, is_done=is_done, index=index)
-            db.session.add(log)
-        db.session.commit()
+            self.db_session.add(log)
+        self.db_session.commit()
+        self.db_session.refresh(log)
         return log
 

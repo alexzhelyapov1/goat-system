@@ -10,3 +10,7 @@ APScheduler
 python-telegram-bot
 redis
 rq
+fastapi
+uvicorn[standard]
+python-jose[cryptography]
+passlib[bcrypt]

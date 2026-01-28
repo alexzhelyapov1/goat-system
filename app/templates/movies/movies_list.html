@@ -33,21 +33,8 @@
             </div>
         </div>
     </div>
-    <div class="list-group">
-        {% for movie in movies %}
-            <div class="list-group-item">
-                <div class="d-flex w-100 justify-content-between align-items-center">
-                    <a href="#" data-bs-toggle="modal" data-bs-target="#movieModal" data-movie-id="{{ movie.id }}" class="text-decoration-none text-dark flex-grow-1">
-                        <h5 class="mb-1">{{ movie.title }}</h5>
-                        <small>{{ movie.genre }}</small>
-                    </a>
-                    <div class="d-flex align-items-center">
-                        <small class="me-3">{{ movie.rating }}/10</small>
-                        <button class="btn btn-danger btn-sm" onclick="deleteMovie(this)" data-movie-id="{{ movie.id }}">Delete</button>
-                    </div>
-                </div>
-            </div>
-        {% endfor %}
+    <div class="list-group" id="movies-list-container">
+        <!-- Movies will be populated by JavaScript -->
     </div>
 
     <!-- Export Modal -->
@@ -99,7 +86,6 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="movieModalLabel">Edit Movie</h5>
-            <a href="#" id="full-page-edit-link" class="btn btn-secondary ms-auto">Expand</a>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -114,145 +100,342 @@
       </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
-        function deleteMovie(button) {
-            var movieId = button.getAttribute('data-movie-id');
-            if (confirm('Are you sure you want to delete this movie?')) {
-                fetch('/movie/delete/' + movieId, {
-                    method: 'POST',
-                }).then(response => {
-                    if (response.ok) {
-                        window.location.reload();
-                    } else {
-                        alert('Error deleting movie.');
-                    }
+        // Helper function to get auth headers
+        function getAuthHeaders() {
+            if (window.jwt_token) {
+                return {
+                    'Authorization': `Bearer ${window.jwt_token}`,
+                    'Content-Type': 'application/json'
+                };
+            }
+            return {'Content-Type': 'application/json'};
+        }
+
+        async function deleteMovie(movieId) {
+            if (!confirm('Are you sure you want to delete this movie?')) {
+                return;
+            }
+
+            if (!window.jwt_token) {
+                alert("Authentication token not available. Please log in again.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/movies/${movieId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
                 });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Failed to delete movie: ${JSON.stringify(errorData)}`);
+                }
+
+                // Movie deleted successfully, refresh list
+                fetchMoviesAndRenderList();
+            } catch (error) {
+                console.error("Error deleting movie:", error);
+                alert(`Error deleting movie: ${error.message}`);
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        async function fetchMoviesAndRenderList() {
+            if (!window.jwt_token) {
+                console.warn("JWT not available. Cannot fetch movies.");
+                return;
+            }
 
-            var movieModal = document.getElementById('movieModal');
-            var movieModalForm = document.getElementById('movie-modal-form');
-            var commentDisplay = movieModal.querySelector('#comment-display');
-            var commentTextarea = movieModal.querySelector('#comment');
-            var deleteMovieBtn = document.getElementById('delete-movie-btn');
-            var currentMovieId;
-            var exportModalEl = document.getElementById('exportModal');
-            var exportModal = new bootstrap.Modal(exportModalEl);
-            var exportMoviesBtn = document.getElementById('export-movies-btn');
+            const moviesListContainer = document.getElementById('movies-list-container');
+            moviesListContainer.innerHTML = 'Loading movies...'; // Placeholder
 
-            exportMoviesBtn.addEventListener('click', function() {
-                var selectedFields = [];
-                var checkboxes = document.querySelectorAll('#exportModal .form-check-input');
-                checkboxes.forEach(function(checkbox) {
-                    if (checkbox.checked) {
-                        selectedFields.push(checkbox.value);
-                    }
+            try {
+                const response = await fetch('/api/movies', {
+                    method: 'GET',
+                    headers: getAuthHeaders()
                 });
 
-                var queryString = selectedFields.map(field => 'fields=' + field).join('&');
-                fetch('/movies/export?' + queryString)
-                    .then(response => response.blob())
-                    .then(blob => {
-                        var url = window.URL.createObjectURL(blob);
-                        var a = document.createElement('a');
-                        a.href = url;
-                        a.download = 'movies.json';
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        // Close the modal after export
-                        exportModal.hide();
-                    });
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch movies: ${response.statusText}`);
+                }
+
+                const movies = await response.json();
+                moviesListContainer.innerHTML = ''; // Clear loading message
+
+                if (movies.length === 0) {
+                    moviesListContainer.innerHTML = '<div class="alert alert-info">No movies found.</div>';
+                    return;
+                }
+
+                movies.forEach(movie => {
+                    const movieElement = `
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#movieModal" data-movie-id="${movie.id}" class="text-decoration-none text-dark flex-grow-1">
+                                    <h5 class="mb-1">${movie.title}</h5>
+                                    <small>${movie.genre || ''}</small>
+                                </a>
+                                <div class="d-flex align-items-center">
+                                    <small class="me-3">${movie.rating !== null ? movie.rating + '/10' : ''}</small>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteMovie(${movie.id})">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    moviesListContainer.innerHTML += movieElement;
+                });
+
+            } catch (error) {
+                console.error("Error fetching movies:", error);
+                moviesListContainer.innerHTML = `<div class="alert alert-danger">Error loading movies: ${error.message}</div>`;
+            }
+        }
+
+        // Expose to global scope for debugging
+        window.fetchMoviesAndRenderList = fetchMoviesAndRenderList;
+
+        var movieModal = document.getElementById('movieModal');
+        var movieModalForm = movieModal.querySelector('#movie-modal-form'); // Select form directly inside modal
+        var commentDisplay = movieModal.querySelector('#comment-display');
+        var commentTextarea = movieModal.querySelector('#comment');
+        var deleteMovieBtn = document.getElementById('delete-movie-btn');
+        var currentMovieId;
+        var exportModalEl = document.getElementById('exportModal');
+        var exportModal = new bootstrap.Modal(exportModalEl);
+        var exportMoviesBtn = document.getElementById('export-movies-btn');
+        var importModalEl = document.getElementById('importModal'); // Get import modal element
+        var importModal = new bootstrap.Modal(importModalEl); // Instantiate import modal
+        var importMoviesForm = document.querySelector('#importModal form'); // Get import form
+
+        // Markdown editor logic for the modal form
+        // (Moved outside DOMContentLoaded)
+        if (commentDisplay && commentTextarea) {
+            // Initial render for markdown preview
+            commentDisplay.innerHTML = marked.parse(commentTextarea.value);
+
+            commentDisplay.addEventListener('click', () => {
+                commentDisplay.classList.add('d-none');
+                commentTextarea.classList.remove('d-none');
+                commentTextarea.focus();
+                autoResizeTextarea(commentTextarea);
             });
 
-            // Markdown editor logic for the modal form
-            if (commentDisplay && commentTextarea) {
+            commentTextarea.addEventListener('blur', () => {
+                commentDisplay.classList.remove('d-none');
+                commentTextarea.classList.add('d-none');
                 commentDisplay.innerHTML = marked.parse(commentTextarea.value);
-
-                commentDisplay.addEventListener('click', () => {
-                    commentDisplay.classList.add('d-none');
-                    commentTextarea.classList.remove('d-none');
-                    commentTextarea.focus();
-                    autoResizeTextarea(commentTextarea);
-                });
-
-                commentTextarea.addEventListener('blur', () => {
-                    commentDisplay.classList.remove('d-none');
-                    commentTextarea.classList.add('d-none');
-                    commentDisplay.innerHTML = marked.parse(commentTextarea.value);
-                });
-
-                commentTextarea.addEventListener('input', () => {
-                    autoResizeTextarea(commentTextarea);
-                });
-            }
-
-            function autoResizeTextarea(textarea) {
-                textarea.style.height = 'auto';
-                textarea.style.height = (textarea.scrollHeight) + 'px';
-            }
-
-
-            movieModal.addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget;
-                var movieId = button.getAttribute('data-movie-id');
-                currentMovieId = movieId;
-                var modalTitle = movieModal.querySelector('.modal-title');
-                var fullPageEditLink = document.getElementById('full-page-edit-link');
-
-                if (movieId === 'create') {
-                    modalTitle.textContent = 'Create Movie';
-                    movieModalForm.action = '{{ url_for("movies.create_movie") }}';
-                    fullPageEditLink.href = '{{ url_for("movies.create_movie") }}';
-                    movieModalForm.reset();
-                    if (commentDisplay && commentTextarea) {
-                        commentTextarea.value = '';
-                        commentDisplay.innerHTML = '';
-                    }
-                    deleteMovieBtn.style.display = 'none';
-                } else {
-                    deleteMovieBtn.style.display = 'block';
-                    // Set the title and form action
-                    modalTitle.textContent = 'Edit Movie ' + movieId;
-                    movieModalForm.action = '/movies/edit/' + movieId;
-                    fullPageEditLink.href = '/movies/edit/' + movieId;
-
-                    // Fetch movie data and populate the form
-                    fetch('/movie/' + movieId + '/json')
-                        .then(response => response.json())
-                        .then(data => {
-                            movieModalForm.title.value = data.title;
-                            movieModalForm.genre.value = data.genre;
-                            movieModalForm.rating.value = data.rating;
-                            movieModalForm.comment.value = data.comment;
-
-                            // Update markdown display
-                            if (commentDisplay && commentTextarea) {
-                                commentTextarea.value = data.comment || '';
-                                commentDisplay.innerHTML = marked.parse(commentTextarea.value);
-                            }
-                        })
-                        .catch(error => console.error('Error fetching movie data:', error));
-                }
             });
-            
-            deleteMovieBtn.addEventListener('click', function() {
-                if (confirm('Are you sure you want to delete this movie?')) {
-                    fetch('/movie/delete/' + currentMovieId, {
-                        method: 'POST',
-                    }).then(response => {
-                        if (response.ok) {
-                            window.location.reload();
-                        } else {
-                            alert('Error deleting movie.');
-                        }
+
+            commentTextarea.addEventListener('input', () => {
+                autoResizeTextarea(commentTextarea);
+            });
+        }
+
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        }
+
+        movieModal.addEventListener('show.bs.modal', async function (event) {
+            var button = event.relatedTarget;
+            var movieId = button.getAttribute('data-movie-id');
+            currentMovieId = movieId;
+            var modalTitle = movieModal.querySelector('.modal-title');
+
+            movieModalForm.reset(); // Reset form for new data
+            if (commentDisplay && commentTextarea) {
+                commentTextarea.value = '';
+                commentDisplay.innerHTML = '';
+            }
+
+            if (movieId === 'create') {
+                modalTitle.textContent = 'Create Movie';
+                deleteMovieBtn.style.display = 'none';
+            } else {
+                deleteMovieBtn.style.display = 'block';
+                modalTitle.textContent = 'Edit Movie ' + movieId;
+
+                try {
+                    const response = await fetch(`/api/movies/${movieId}`, {
+                        method: 'GET',
+                        headers: getAuthHeaders()
                     });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch movie: ${response.statusText}`);
+                    }
+                    const data = await response.json();
+                    movieModalForm.title.value = data.title || '';
+                    movieModalForm.genre.value = data.genre || '';
+                    movieModalForm.rating.value = data.rating || '';
+                    movieModalForm.comment.value = data.comment || '';
+
+                    // Update markdown display
+                    if (commentDisplay && commentTextarea) {
+                        commentTextarea.value = data.comment || '';
+                        commentDisplay.innerHTML = marked.parse(commentTextarea.value);
+                    }
+                } catch (error) {
+                    console.error('Error fetching movie data:', error);
+                    alert('Error loading movie data.');
+                }
+            }
+        });
+
+        // Handle form submission (Create/Update)
+        movieModalForm.addEventListener('submit', async function (event) {
+            event.preventDefault(); // Prevent default form submission
+
+            if (!window.jwt_token) {
+                alert("Authentication token not available. Please log in again.");
+                return;
+            }
+
+            const formData = new FormData(movieModalForm);
+            const movieData = Object.fromEntries(formData.entries());
+
+            const payload = {
+                title: movieData.title,
+                genre: movieData.genre || null,
+                rating: movieData.rating ? parseInt(movieData.rating, 10) : null,
+                comment: movieData.comment || null
+            };
+
+            let url = '/api/movies';
+            let method = 'POST';
+
+            if (currentMovieId !== 'create') {
+                url = `/api/movies/${currentMovieId}`;
+                method = 'PUT';
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Failed to save movie: ${JSON.stringify(errorData)}`);
+                }
+
+                // Movie saved successfully, close modal and refresh list
+                const bsModal = bootstrap.Modal.getInstance(movieModal);
+                bsModal.hide();
+                fetchMoviesAndRenderList();
+            } catch (error) {
+                console.error("Error saving movie:", error);
+                alert(`Error saving movie: ${error.message}`);
+            }
+        });
+        
+        // Handle delete movie button click in modal
+        deleteMovieBtn.addEventListener('click', async function() {
+            if (!currentMovieId || currentMovieId === 'create') {
+                alert("Cannot delete unsaved movie.");
+                return;
+            }
+            if (!confirm('Are you sure you want to delete this movie?')) {
+                return;
+            }
+
+            await deleteMovie(currentMovieId); // Use the global deleteMovie function
+            const bsModal = bootstrap.Modal.getInstance(movieModal);
+            bsModal.hide();
+        });
+
+
+        exportMoviesBtn.addEventListener('click', function() {
+            var selectedFields = [];
+            var checkboxes = document.querySelectorAll('#exportModal .form-check-input');
+            checkboxes.forEach(function(checkbox) {
+                if (checkbox.checked) {
+                    selectedFields.push(checkbox.value);
                 }
             });
+
+            var queryString = selectedFields.map(field => 'fields=' + field).join('&');
+            fetch('/movies/export?' + queryString, { headers: getAuthHeaders() }) // Pass JWT
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    var url = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'movies.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    exportModal.hide();
+                })
+                .catch(error => {
+                    console.error("Error exporting movies:", error);
+                    alert('Error exporting movies.');
+                });
         });
+
+        importMoviesForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            if (!window.jwt_token) {
+                alert("Authentication token not available. Please log in again.");
+                return;
+            }
+
+            const formData = new FormData(importMoviesForm);
+            const fileInput = formData.get('file');
+
+            if (!fileInput || fileInput.size === 0) {
+                alert('Please select a JSON file to import.');
+                return;
+            }
+
+            try {
+                const fileContent = await fileInput.text();
+                const moviesToImport = JSON.parse(fileContent);
+
+                for (const movieData of moviesToImport) {
+                    const payload = {
+                        title: movieData.title || 'Imported Movie',
+                        genre: movieData.genre || null,
+                        rating: movieData.rating ? parseInt(movieData.rating, 10) : null,
+                        comment: movieData.comment || null
+                    };
+
+                    const response = await fetch('/api/movies', {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`Failed to import movie: ${JSON.stringify(errorData)}`);
+                    }
+                }
+
+                alert('Movies imported successfully!');
+                importModal.hide();
+                fetchMoviesAndRenderList(); // Refresh movies after import
+            } catch (error) {
+                console.error("Error importing movies:", error);
+                alert(`Error importing movies: ${error.message}`);
+            }
+        });
+
+        // Initial fetch of movies when the page loads, after JWT is ready
+        if (window.jwt_token) {
+            fetchMoviesAndRenderList();
+        } else {
+            document.addEventListener('jwt-ready', fetchMoviesAndRenderList);
+        }
+
     </script>
 {% endblock %}
 
