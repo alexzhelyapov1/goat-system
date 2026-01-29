@@ -12,9 +12,9 @@ from app.api_client import make_api_request
 
 @bp.route('/habits')
 @login_required
-async def habits():
+def habits():
     try:
-        response = await make_api_request("GET", "/habits/")
+        response = make_api_request("GET", "/habits/")
         habits_data = response.json()
         habits = TypeAdapter(List[HabitSchema]).validate_python(habits_data)
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
@@ -31,7 +31,7 @@ async def habits():
     for habit in habits:
         try:
             params = {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()}
-            response = await make_api_request("GET", f"/habits/{habit.id}/dates-with-status", params=params)
+            response = make_api_request("GET", f"/habits/{habit.id}/dates-with-status", params=params)
             dates_with_status_raw = response.json()
             # Convert string keys back to date objects
             dates_with_status = {date.fromisoformat(k): v for k, v in dates_with_status_raw.items()}
@@ -49,16 +49,16 @@ async def habits():
 
 @bp.route('/habit/<int:habit_id>/json')
 @login_required
-async def habit_json(habit_id):
+def habit_json(habit_id):
     try:
-        response = await make_api_request("GET", f"/habits/{habit_id}")
+        response = make_api_request("GET", f"/habits/{habit_id}")
         return jsonify(response.json())
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/habits/create', methods=['GET', 'POST'])
 @login_required
-async def create_habit():
+def create_habit():
     if request.method == 'POST':
         try:
             strategy_params_str = request.form.get('strategy_params')
@@ -83,7 +83,7 @@ async def create_habit():
                 "strategy_params": strategy_params
             }
             
-            await make_api_request("POST", "/habits/", json_data=habit_data)
+            make_api_request("POST", "/habits/", json_data=habit_data)
 
             flash('Habit created successfully!', 'success')
             return redirect(url_for('habits.habits'))
@@ -94,7 +94,7 @@ async def create_habit():
 
 @bp.route('/habits/edit/<int:habit_id>', methods=['GET', 'POST'])
 @login_required
-async def edit_habit(habit_id):
+def edit_habit(habit_id):
     if request.method == 'POST':
         try:
             strategy_params_str = request.form.get('strategy_params')
@@ -119,7 +119,7 @@ async def edit_habit(habit_id):
                 "strategy_params": strategy_params
             }
             
-            await make_api_request("PUT", f"/habits/{habit_id}", json_data=habit_data)
+            make_api_request("PUT", f"/habits/{habit_id}", json_data=habit_data)
 
             flash('Habit updated successfully!', 'success')
             return redirect(url_for('habits.habits'))
@@ -128,7 +128,7 @@ async def edit_habit(habit_id):
             return redirect(url_for('habits.edit_habit', habit_id=habit_id))
     
     try:
-        response = await make_api_request("GET", f"/habits/{habit_id}")
+        response = make_api_request("GET", f"/habits/{habit_id}")
         habit = response.json()
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
         flash(f"Error fetching habit: {e}", 'danger')
@@ -138,9 +138,9 @@ async def edit_habit(habit_id):
 
 @bp.route('/habit/delete/<int:habit_id>', methods=['POST'])
 @login_required
-async def delete_habit(habit_id):
+def delete_habit(habit_id):
     try:
-        await make_api_request("DELETE", f"/habits/{habit_id}")
+        make_api_request("DELETE", f"/habits/{habit_id}")
         flash('Habit deleted successfully!', 'success')
         return jsonify({'success': True})
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
@@ -148,7 +148,7 @@ async def delete_habit(habit_id):
 
 @bp.route('/habits/log', methods=['POST'])
 @login_required
-async def log_habit():
+def log_habit():
     try:
         log_data = {
             "habit_id": int(request.form['habit_id']),
@@ -156,7 +156,7 @@ async def log_habit():
             "is_done": request.form.get('is_done') == 'true',
             "index": int(request.form.get('index', 0))
         }
-        await make_api_request("POST", "/habits/log", json_data=log_data)
+        make_api_request("POST", "/habits/log", json_data=log_data)
         return jsonify({'success': True})
     except (httpx.RequestError, httpx.HTTPStatusError, ValueError) as e:
         return jsonify({'error': str(e)}), 500

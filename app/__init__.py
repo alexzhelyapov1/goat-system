@@ -102,20 +102,6 @@ def create_app(config_class=config.Config):
                         f"**Message:** `{str(e)}`\n" \
                         f"**Traceback:**\n```\n{traceback.format_exc()}\n```"
         
-        # Determine Telegram chat_id for "alex" for error reporting
-        alex_chat_id = None
-        # This part still needs to interact with the database to find alex's chat ID.
-        # Ideally, this should be handled by a specific FastAPI endpoint or a more robust
-        # error reporting service that doesn't rely on Flask-SQLAlchemy directly.
-        # For now, we'll keep it as is, or remove it entirely if it causes issues.
-        # A more complete solution would involve the FastAPI /telegram/send_error_report
-        # endpoint querying its own database for the admin user's chat_id based on a config.
-        
-        # For simplicity and to avoid circular dependencies/complexities in Flask's error handler
-        # we will rely on a configured TELEGRAM_ADMIN_CHAT_ID in config.py or skip this part.
-        # Or, we make a blocking call to FastAPI to retrieve alex's chat_id.
-
-        # Option 1: Use a hardcoded admin chat ID for error reports (less flexible but simple)
         admin_chat_id = current_app.config.get('TELEGRAM_ADMIN_CHAT_ID')
         if not admin_chat_id:
             app.logger.warning("TELEGRAM_ADMIN_CHAT_ID not configured. Cannot send Telegram error report.")

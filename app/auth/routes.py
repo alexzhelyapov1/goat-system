@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, session
+from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, make_response
 from flask_login import login_user, logout_user, current_user, login_required
 from app import db
 from app.auth import bp
@@ -14,7 +14,7 @@ from app.api_client import make_api_request # Import the new centralized API cli
 
 @bp.route('/telegram/connect', methods=['POST'])
 @login_required
-async def telegram_connect():
+def telegram_connect():
     """Generate a token for telegram linking and store it in Redis."""
     token = str(uuid.uuid4())
     # Key: telegram_token:<token>, Value: user_id, TTL: 10 minutes
@@ -30,17 +30,17 @@ async def telegram_connect():
 
 @bp.route('/telegram/disconnect', methods=['POST'])
 @login_required
-async def telegram_disconnect():
+def telegram_disconnect():
     """Unlink a telegram account from the user profile."""
     try:
-        await make_api_request("POST", "/telegram/disconnect")
+        make_api_request("POST", "/telegram/disconnect")
         flash('Your Telegram account has been unlinked.')
-    except (httpx.RequestError, httpx.HTTPStatusError):
-        pass # Error already flashed by _make_api_request
+    except (httpx.RequestError, httpx.HTTPStatusError) as e:
+        flash(f"Could not disconnect Telegram: {e}", "danger")
     return redirect(url_for('auth.profile'))
 
 @bp.route('/register', methods=['GET', 'POST'])
-async def register():
+def register():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     if request.method == 'POST':
@@ -64,7 +64,7 @@ async def register():
     return render_template('auth/register.html')
 
 @bp.route('/login', methods=['GET', 'POST'])
-async def login():
+def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     if request.method == 'POST':
@@ -75,26 +75,30 @@ async def login():
         login_user(user, remember=True)
 
         try:
-            response = await make_api_request(
+            response = make_api_request(
                 "POST",
                 "/token",
                 form_data={"username": request.form['username'], "password": request.form['password']},
             )
             token_data = response.json()
-            session['jwt_token'] = token_data['access_token']
+            
+            resp = make_response(redirect(url_for('index')))
+            resp.set_cookie('access_token', token_data['access_token'], httponly=True, samesite='Lax')
+            return resp
+
         except (httpx.RequestError, httpx.HTTPStatusError) as e:
-            flash("Failed to obtain JWT token from API.")
+            flash(f"Failed to obtain JWT token from API.", "danger")
             logout_user()
             return redirect(url_for('auth.login'))
 
-        return redirect(url_for('index'))
     return render_template('auth/login.html')
 
 @bp.route('/logout')
 def logout():
     logout_user()
-    session.pop('jwt_token', None) # Clear the JWT token from session
-    return redirect(url_for('index'))
+    resp = make_response(redirect(url_for('index')))
+    resp.delete_cookie('access_token')
+    return resp
 
 @bp.route('/profile')
 @login_required

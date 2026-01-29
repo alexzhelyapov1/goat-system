@@ -11,9 +11,9 @@ from app.api_client import make_api_request
 
 @bp.route('/movies')
 @login_required
-async def movies():
+def movies():
     try:
-        response = await make_api_request("GET", "/movies/")
+        response = make_api_request("GET", "/movies/")
         movies_data = response.json()
         movies = TypeAdapter(List[MovieSchema]).validate_python(movies_data)
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
@@ -23,16 +23,16 @@ async def movies():
 
 @bp.route('/movie/<int:movie_id>/json')
 @login_required
-async def movie_json(movie_id):
+def movie_json(movie_id):
     try:
-        response = await make_api_request("GET", f"/movies/{movie_id}")
+        response = make_api_request("GET", f"/movies/{movie_id}")
         return jsonify(response.json())
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/movies/create', methods=['GET', 'POST'])
 @login_required
-async def create_movie():
+def create_movie():
     if request.method == 'POST':
         try:
             movie_data = {
@@ -41,7 +41,7 @@ async def create_movie():
                 "rating": int(request.form['rating']) if request.form['rating'] else None,
                 "comment": request.form.get('comment')
             }
-            await make_api_request("POST", "/movies/", json_data=movie_data)
+            make_api_request("POST", "/movies/", json_data=movie_data)
             flash('Movie created successfully!', 'success')
             return redirect(url_for('movies.movies'))
         except (ValidationError, httpx.RequestError, httpx.HTTPStatusError, ValueError) as e:
@@ -51,7 +51,7 @@ async def create_movie():
 
 @bp.route('/movies/edit/<int:movie_id>', methods=['GET', 'POST'])
 @login_required
-async def edit_movie(movie_id):
+def edit_movie(movie_id):
     if request.method == 'POST':
         try:
             movie_data = {
@@ -60,7 +60,7 @@ async def edit_movie(movie_id):
                 "rating": int(request.form['rating']) if request.form['rating'] else None,
                 "comment": request.form.get('comment')
             }
-            await make_api_request("PUT", f"/movies/{movie_id}", json_data=movie_data)
+            make_api_request("PUT", f"/movies/{movie_id}", json_data=movie_data)
             flash('Movie updated successfully!', 'success')
             return redirect(url_for('movies.movies'))
         except (ValidationError, httpx.RequestError, httpx.HTTPStatusError, ValueError) as e:
@@ -68,7 +68,7 @@ async def edit_movie(movie_id):
             return redirect(url_for('movies.edit_movie', movie_id=movie_id))
     
     try:
-        response = await make_api_request("GET", f"/movies/{movie_id}")
+        response = make_api_request("GET", f"/movies/{movie_id}")
         movie = response.json()
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
         flash(f"Error fetching movie: {e}", 'danger')
@@ -78,9 +78,9 @@ async def edit_movie(movie_id):
 
 @bp.route('/movie/delete/<int:movie_id>', methods=['POST'])
 @login_required
-async def delete_movie(movie_id):
+def delete_movie(movie_id):
     try:
-        await make_api_request("DELETE", f"/movies/{movie_id}")
+        make_api_request("DELETE", f"/movies/{movie_id}")
         flash('Movie deleted successfully!', 'success')
         return jsonify({'success': True})
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
@@ -89,10 +89,10 @@ async def delete_movie(movie_id):
 
 @bp.route('/movies/export')
 @login_required
-async def export_movies():
+def export_movies():
     fields = request.args.getlist('fields')
     try:
-        response = await make_api_request("GET", "/movies/export", params={'fields': fields})
+        response = make_api_request("GET", "/movies/export", params={'fields': fields})
         movies_to_export = response.json()
         
         response_data = json.dumps(movies_to_export, ensure_ascii=False, indent=4)
@@ -105,7 +105,7 @@ async def export_movies():
 
 @bp.route('/movies/import', methods=['POST'])
 @login_required
-async def import_movies():
+def import_movies():
     if 'file' not in request.files:
         flash('No file part', 'warning')
         return redirect(url_for('movies.movies'))
@@ -116,7 +116,7 @@ async def import_movies():
     if file:
         try:
             movies_data = json.load(file)
-            await make_api_request("POST", "/movies/import", json_data=movies_data)
+            make_api_request("POST", "/movies/import", json_data=movies_data)
             flash('Movies imported successfully!', 'success')
         except (json.JSONDecodeError, httpx.RequestError, httpx.HTTPStatusError) as e:
             flash(f'Error importing movies: {e}', 'danger')

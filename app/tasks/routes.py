@@ -13,10 +13,10 @@ from app.api_client import make_api_request
 
 @bp.route('/tasks')
 @login_required
-async def tasks():
+def tasks():
     task_type = request.args.get('type', 'all')
     try:
-        response = await make_api_request("GET", "/tasks/", params={'type': task_type})
+        response = make_api_request("GET", "/tasks/", params={'type': task_type})
         tasks_data = response.json()
         tasks = TypeAdapter(List[TaskSchema]).validate_python(tasks_data)
     except (httpx.HTTPStatusError, httpx.RequestError) as e:
@@ -26,20 +26,20 @@ async def tasks():
 
 @bp.route('/task/<int:task_id>/json')
 @login_required
-async def task_json(task_id):
+def task_json(task_id):
     try:
-        response = await make_api_request("GET", f"/tasks/{task_id}")
+        response = make_api_request("GET", f"/tasks/{task_id}")
         return jsonify(response.json())
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/tasks/create', methods=['GET', 'POST'])
 @login_required
-async def create_task():
+def create_task():
     if request.method == 'POST':
         try:
             task_data = request.form.to_dict()
-            await make_api_request("POST", "/tasks/", json_data=task_data)
+            make_api_request("POST", "/tasks/", json_data=task_data)
             flash('Task created successfully!', 'success')
             return redirect(request.referrer or url_for('tasks.tasks'))
         except (ValidationError, httpx.RequestError, httpx.HTTPStatusError, ValueError) as e:
@@ -49,18 +49,18 @@ async def create_task():
 
 @bp.route('/task/edit/<int:task_id>', methods=['GET', 'POST'])
 @login_required
-async def edit_task(task_id):
+def edit_task(task_id):
     if request.method == 'POST':
         try:
             task_data = request.form.to_dict()
-            await make_api_request("PUT", f"/tasks/{task_id}", json_data=task_data)
+            make_api_request("PUT", f"/tasks/{task_id}", json_data=task_data)
             flash('Task updated successfully!', 'success')
             return redirect(request.referrer or url_for('tasks.tasks'))
         except (ValidationError, httpx.RequestError, httpx.HTTPStatusError, ValueError) as e:
             flash(str(e), 'danger')
     
     try:
-        response = await make_api_request("GET", f"/tasks/{task_id}")
+        response = make_api_request("GET", f"/tasks/{task_id}")
         task = response.json()
         
         # Convert date strings back to datetime objects for the template
@@ -76,9 +76,9 @@ async def edit_task(task_id):
 
 @bp.route('/task/delete/<int:task_id>', methods=['POST'])
 @login_required
-async def delete_task(task_id):
+def delete_task(task_id):
     try:
-        await make_api_request("DELETE", f"/tasks/{task_id}")
+        make_api_request("DELETE", f"/tasks/{task_id}")
         flash('Task deleted successfully!', 'success')
         return jsonify({'success': True})
     except (httpx.RequestError, httpx.HTTPStatusError) as e:
@@ -87,10 +87,10 @@ async def delete_task(task_id):
 
 @bp.route('/tasks/export')
 @login_required
-async def export_tasks():
+def export_tasks():
     fields = request.args.getlist('fields')
     try:
-        response = await make_api_request("GET", "/tasks/export", params={'fields': fields})
+        response = make_api_request("GET", "/tasks/export", params={'fields': fields})
         tasks_to_export = response.json()
         
         response_data = json.dumps(tasks_to_export, ensure_ascii=False, indent=4)
@@ -103,7 +103,7 @@ async def export_tasks():
 
 @bp.route('/tasks/import', methods=['POST'])
 @login_required
-async def import_tasks():
+def import_tasks():
     if 'file' not in request.files:
         flash('No file part', 'warning')
         return redirect(url_for('tasks.tasks'))
@@ -114,7 +114,7 @@ async def import_tasks():
     if file:
         try:
             tasks_data = json.load(file)
-            await make_api_request("POST", "/tasks/import", json_data=tasks_data)
+            make_api_request("POST", "/tasks/import", json_data=tasks_data)
             flash('Tasks imported successfully!', 'success')
         except (json.JSONDecodeError, httpx.RequestError, httpx.HTTPStatusError) as e:
             flash(f'Error importing tasks: {e}', 'danger')
@@ -122,9 +122,9 @@ async def import_tasks():
 
 @bp.route('/task/<int:task_id>')
 @login_required
-async def task(task_id):
+def task(task_id):
     try:
-        response = await make_api_request("GET", f"/tasks/{task_id}")
+        response = make_api_request("GET", f"/tasks/{task_id}")
         task_data = response.json()
         # The API is the source of truth, no need to check user_id here
         task = TypeAdapter(TaskSchema).validate_python(task_data)
