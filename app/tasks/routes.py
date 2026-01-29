@@ -38,28 +38,7 @@ async def task_json(task_id):
 async def create_task():
     if request.method == 'POST':
         try:
-            form_data = request.form.to_dict()
-            for key in ['deadline', 'planned_start', 'planned_end', 'suspend_due', 'notify_at']:
-                date_val = form_data.get(f'{key}_date')
-                time_val = form_data.get(f'{key}_time')
-
-                if date_val:
-                    if not time_val:
-                        time_val = '00:00'
-                    form_data[key] = f'{date_val}T{time_val}:00' # Assuming seconds are 00
-                else:
-                    form_data[key] = None
-            
-            if not form_data.get('duration'):
-                form_data['duration'] = None
-            else:
-                form_data['duration'] = int(form_data['duration'])
-
-            if form_data.get('planned_start'):
-                form_data['type'] = 'CALENDAR'
-
-            task_data = {k: v for k, v in form_data.items() if v is not None}
-
+            task_data = request.form.to_dict()
             await make_api_request("POST", "/tasks/", json_data=task_data)
             flash('Task created successfully!', 'success')
             return redirect(request.referrer or url_for('tasks.tasks'))
@@ -73,28 +52,7 @@ async def create_task():
 async def edit_task(task_id):
     if request.method == 'POST':
         try:
-            form_data = request.form.to_dict()
-            for key in ['deadline', 'planned_start', 'planned_end', 'suspend_due', 'notify_at']:
-                date_val = form_data.get(f'{key}_date')
-                time_val = form_data.get(f'{key}_time')
-
-                if date_val:
-                    if not time_val:
-                        time_val = '00:00'
-                    form_data[key] = f'{date_val}T{time_val}:00'
-                else:
-                    form_data[key] = None
-            
-            if not form_data.get('duration'):
-                form_data['duration'] = None
-            else:
-                form_data['duration'] = int(form_data['duration'])
-
-            if form_data.get('planned_start'):
-                form_data['type'] = 'CALENDAR'
-
-            task_data = {k: v for k, v in form_data.items() if v is not None}
-
+            task_data = request.form.to_dict()
             await make_api_request("PUT", f"/tasks/{task_id}", json_data=task_data)
             flash('Task updated successfully!', 'success')
             return redirect(request.referrer or url_for('tasks.tasks'))
