@@ -102,3 +102,14 @@ class PersonSchema(PersonBase):
 
     class Config:
         from_attributes = True
+
+class UserTelegramUpdate(BaseModel):
+    telegram_chat_id: Optional[str] = None
+    telegram_username: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class UserTelegramSendMessage(BaseModel):
+    chat_id: str
+    message: str

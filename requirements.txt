@@ -1,4 +1,4 @@
-Flask
+Flask[async]
 Flask-Login
 Flask-Migrate
 Flask-SQLAlchemy
@@ -10,3 +10,9 @@ APScheduler
 python-telegram-bot
 redis
 rq
+fastapi
+uvicorn
+httpx
+python-multipart
+gevent
+python-jose[cryptography]
