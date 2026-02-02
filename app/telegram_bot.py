@@ -3,19 +3,14 @@ from datetime import datetime
 from functools import wraps
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    CommandHandler,
-    MessageHandler,
-    filters,
-    ConversationHandler,
-    CallbackQueryHandler,
-)
+from telegram.ext import ConversationHandler
 
-from app.models import User, UserRole, Task
+from app.models import UserRole
 from app.schemas import TaskCreate
 from app.queue import q, redis_conn
-from app.extensions import db
-
+from app.database import SessionLocal
+from app.services.user_service import UserService
+from app.services.task_service import TaskService
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -25,87 +20,74 @@ logger = logging.getLogger(__name__)
 CONFIRM_DELETE = 0
 GET_TITLE, GET_NOTIFY_CHOICE, GET_NOTIFY_AT = range(3)
 
+def get_db_session():
+    """Helper to get a new DB session."""
+    return SessionLocal()
 
 def restricted_to_role(roles):
     def decorator(func):
         @wraps(func)
         async def wrapper(update, context, *args, **kwargs):
-            chat_id = update.effective_chat.id
-            user = User.query.filter_by(telegram_chat_id=str(chat_id)).first()
-
-            if not user:
-                await update.message.reply_text("Your account is not linked. Please use /start to link your account.")
-                return
-
-            if user.role not in roles:
-                role_value = user.role.value if user.role else "Not set"
-                await update.message.reply_text(f"You are not authorized to use this command. Your role is {role_value}.")
-                return
-
-            context.user_data['user'] = user
-            return await func(update, context, *args, **kwargs)
+            chat_id = str(update.effective_chat.id)
+            db_session = get_db_session()
+            try:
+                user = UserService.get_user_by_telegram_chat_id(db_session, chat_id)
+                if not user:
+                    await update.message.reply_text("Your account is not linked. Please use /start.")
+                    return
+                if user.role not in roles:
+                    await update.message.reply_text("You are not authorized to use this command.")
+                    return
+                
+                context.user_data['user_id'] = user.id
+                return await func(update, context, *args, **kwargs)
+            finally:
+                db_session.close()
         return wrapper
     return decorator
-
 
 async def start(update, context):
     chat_id = str(update.message.chat_id)
     telegram_username = update.effective_user.username
     args = context.args
+    db_session = get_db_session()
 
-    if args:
-        token = args[0]
-        user_id_bytes = redis_conn.get(f"telegram_token:{token}")
+    try:
+        if args:
+            token = args[0]
+            user_id_bytes = redis_conn.get(f"telegram_token:{token}")
 
-        if not user_id_bytes:
-            await update.message.reply_text(
-                "This link is invalid or has expired. Please generate a new one on the website's profile page."
-            )
+            if not user_id_bytes:
+                await update.message.reply_text("This link is invalid or has expired.")
+                return
+
+            user_id = int(user_id_bytes.decode('utf-8'))
+            
+            existing_user = UserService.get_user_by_telegram_chat_id(db_session, chat_id)
+            if existing_user and existing_user.id != user_id:
+                await update.message.reply_text("This Telegram account is already linked to another user.")
+                return
+
+            user = UserService.get_user_by_id(db_session, user_id)
+            if user:
+                user.telegram_chat_id = chat_id
+                user.telegram_username = telegram_username
+                db_session.commit()
+                redis_conn.delete(f"telegram_token:{token}")
+                await update.message.reply_text(f"Success! Linked to profile '{user.username}'.")
+            else:
+                await update.message.reply_text("An error occurred: User not found.")
             return
 
-        user_id = int(user_id_bytes.decode('utf-8'))
-
-        # Check if this telegram account is already linked to someone else
-        existing_user_with_chat_id = User.query.filter_by(telegram_chat_id=chat_id).first()
-        if existing_user_with_chat_id and existing_user_with_chat_id.id != user_id:
-            await update.message.reply_text(
-                "This Telegram account is already linked to another user. "
-                "Please unlink it from the other account before linking it to a new one."
-            )
-            return
-
-        user = User.query.get(user_id)
+        user = UserService.get_user_by_telegram_chat_id(db_session, chat_id)
         if user:
-            user.telegram_chat_id = chat_id
-            user.telegram_username = telegram_username
-            db.session.commit()
-            redis_conn.delete(f"telegram_token:{token}")
-            await update.message.reply_text(
-                f"Success! Your Telegram account is now linked to your profile '{user.username}'."
-            )
-        else:
-            # This case should be rare if the token system is working correctly
-            await update.message.reply_text("An error occurred: The user associated with this link could not be found.")
-        return
+            await update.message.reply_text(f"This Telegram account is already linked to '{user.username}'.")
+            return
 
-    # Original start command logic if no token is provided
-    user = User.query.filter_by(telegram_chat_id=chat_id).first()
-    if user:
-        await update.message.reply_text(
-            f"This Telegram account is already linked to the user '{user.username}'. "
-            f"You can manage your linked accounts on the web application's profile page."
-        )
-        return
-
-    message = (
-        f"Welcome! To link this Telegram account with your web profile, please do the following:\n\n"
-        f"1. Log in to the web application.\n"
-        f"2. Go to your profile page.\n"
-        f"3. Click the 'Connect with Telegram' button.\n\n"
-        f"Your Chat ID is: `{chat_id}` (You no longer need to enter this manually)."
-    )
-    await update.message.reply_text(message, parse_mode='Markdown')
-
+        message = f"Welcome! To link this account, use the 'Connect with Telegram' button on your web profile.\n\nYour Chat ID is: `{chat_id}`"
+        await update.message.reply_text(message, parse_mode='Markdown')
+    finally:
+        db_session.close()
 
 @restricted_to_role([UserRole.USER, UserRole.ADMIN, UserRole.TRUSTED])
 async def task_list(update, context):
@@ -114,58 +96,50 @@ async def task_list(update, context):
     task_type = command.split("_")[-1].upper()
     if task_type == "ALL":
         task_type = "all"
-
     q.enqueue('app.tasks_rq.handle_task_list', chat_id, task_type)
     await update.message.reply_text("Fetching your tasks...")
 
-
 @restricted_to_role([UserRole.USER, UserRole.ADMIN, UserRole.TRUSTED])
 async def task_delete(update, context):
-    user = context.user_data['user']
+    user_id = context.user_data['user_id']
+    db_session = get_db_session()
 
-    if not context.args:
-        await update.message.reply_text("Please provide a task ID. Usage: /task_delete <task_id>")
-        return ConversationHandler.END
+    try:
+        if not context.args:
+            await update.message.reply_text("Usage: /task_delete <task_id>")
+            return ConversationHandler.END
 
-    task_id = context.args[0]
-    task = Task.query.get(task_id)
+        task_id = int(context.args[0])
+        task = TaskService.get_task(db_session, task_id)
 
-    if not task or task.user_id != user.id:
-        await update.message.reply_text("Task not found or you are not authorized to delete it.")
-        return ConversationHandler.END
+        if not task or task.user_id != user_id:
+            await update.message.reply_text("Task not found or you are not authorized.")
+            return ConversationHandler.END
 
-    context.user_data["task_to_delete"] = task
-    keyboard = [
-        [
-            InlineKeyboardButton("Yes", callback_data="delete_yes"),
-            InlineKeyboardButton("No", callback_data="delete_no"),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        f"Are you sure you want to delete this task: {task.title}?",
-        reply_markup=reply_markup,
-    )
-    return CONFIRM_DELETE
-
+        context.user_data["task_to_delete"] = task.id
+        context.user_data["task_title"] = task.title
+        keyboard = [[InlineKeyboardButton("Yes", callback_data="delete_yes"), InlineKeyboardButton("No", callback_data="delete_no")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(f"Delete task: {task.title}?", reply_markup=reply_markup)
+        return CONFIRM_DELETE
+    finally:
+        db_session.close()
 
 async def task_delete_confirm(update, context):
     query = update.callback_query
     await query.answer()
-    user = context.user_data['user']
-    task = context.user_data["task_to_delete"]
+    user_id = context.user_data['user_id']
+    task_id = context.user_data["task_to_delete"]
+    task_title = context.user_data["task_title"]
 
     if query.data == "delete_yes":
-        q.enqueue('app.tasks_rq.delete_task', user.id, task.id)
-        await query.edit_message_text(text=f"Task '{task.title}' is being deleted.")
+        q.enqueue('app.tasks_rq.delete_task', user_id, task_id)
+        await query.edit_message_text(text=f"Task '{task_title}' is being deleted.")
     else:
         await query.edit_message_text(text="Task deletion cancelled.")
-
-    del context.user_data["task_to_delete"]
-    del context.user_data["user"]
+    
+    context.user_data.clear()
     return ConversationHandler.END
-
-
 
 @restricted_to_role([UserRole.USER, UserRole.ADMIN, UserRole.TRUSTED])
 async def add_task_start(update, context):
@@ -175,54 +149,37 @@ async def add_task_start(update, context):
     await update.message.reply_text(f"Adding a new {task_type} task. What is the title?")
     return GET_TITLE
 
-
 async def get_title(update, context):
     context.user_data["title"] = update.message.text
-    keyboard = [
-        [
-            InlineKeyboardButton("Yes", callback_data="notify_yes"),
-            InlineKeyboardButton("No", callback_data="notify_no"),
-        ]
-    ]
+    keyboard = [[InlineKeyboardButton("Yes", callback_data="notify_yes"), InlineKeyboardButton("No", callback_data="notify_no")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        "Do you want to set a notification for this task?", reply_markup=reply_markup
-    )
+    await update.message.reply_text("Set a notification?", reply_markup=reply_markup)
     return GET_NOTIFY_CHOICE
-
 
 async def get_notify_choice(update, context):
     query = update.callback_query
     await query.answer()
-    user = context.user_data['user']
+    user_id = context.user_data['user_id']
 
     if query.data == "notify_yes":
-        await query.edit_message_text(text="Please provide the notification date and time in the format YYYY-MM-DD HH:MM.")
+        await query.edit_message_text(text="Provide notification time (YYYY-MM-DD HH:MM).")
         return GET_NOTIFY_AT
     else:
-        task_data = TaskCreate(
-            title=context.user_data["title"],
-            type=context.user_data["task_type"],
-        )
-        q.enqueue('app.tasks_rq.create_task', user.id, task_data.model_dump())
-        await query.edit_message_text(text=f"Task '{context.user_data['title']}' is being created.")
+        task_data = TaskCreate(title=context.user_data["title"], type=context.user_data["task_type"])
+        q.enqueue('app.tasks_rq.create_task', user_id, task_data.model_dump())
+        await query.edit_message_text(text=f"Task '{context.user_data['title']}' created.")
         context.user_data.clear()
         return ConversationHandler.END
 
-
 async def get_notify_at(update, context):
-    user = context.user_data['user']
+    user_id = context.user_data['user_id']
     try:
         notify_at = datetime.strptime(update.message.text, "%Y-%m-%d %H:%M")
-        task_data = TaskCreate(
-            title=context.user_data["title"],
-            type=context.user_data["task_type"],
-            notify_at=notify_at,
-        )
-        q.enqueue('app.tasks_rq.create_task', user.id, task_data.model_dump())
-        await update.message.reply_text(text=f"Task '{context.user_data['title']}' with notification is being created.")
+        task_data = TaskCreate(title=context.user_data["title"], type=context.user_data["task_type"], notify_at=notify_at)
+        q.enqueue('app.tasks_rq.create_task', user_id, task_data.model_dump())
+        await update.message.reply_text(f"Task '{context.user_data['title']}' with notification created.")
     except ValueError:
-        await update.message.reply_text("Invalid date format. Please use YYYY-MM-DD HH:MM.")
+        await update.message.reply_text("Invalid format. Please use YYYY-MM-DD HH:MM.")
         return GET_NOTIFY_AT
     context.user_data.clear()
     return ConversationHandler.END

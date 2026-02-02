@@ -11,8 +11,9 @@ class TokenData(BaseModel):
     username: Optional[str] = None
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token(data: dict, user_id: int, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
+    to_encode.update({"user_id": user_id})
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
@@ -22,12 +23,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> Optional[str]:
+def decode_access_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: Optional[str] = payload.get("sub")
-        if username is None:
-            return None
-        return username
+        return payload
     except JWTError:
         return None

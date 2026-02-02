@@ -1,7 +1,6 @@
-from flask import Flask, redirect, url_for, session, render_template, current_app
+from flask import Flask, redirect, url_for, session, render_template, current_app, g
 from flask_login import LoginManager, current_user
-from flask_migrate import Migrate
-from app.extensions import db, login_manager, migrate
+from app.extensions import login_manager
 import config
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -9,13 +8,14 @@ import httpx
 import traceback
 import asyncio
 
+from app.database import SessionLocal
+from app.models import User
+
 
 def create_app(config_class=config.Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
     app.config['SESSION_PERMANENT'] = True
-
-    db.init_app(app)
 
     # Enable WAL mode for SQLite to prevent "database is locked" errors
     if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
@@ -25,12 +25,27 @@ def create_app(config_class=config.Config):
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.close()
 
-    migrate.init_app(app, db)
+    # migrate.init_app(app, db) # TODO: Re-enable migrations
     login_manager.init_app(app)
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        db_session = SessionLocal()
+        try:
+            return db_session.query(User).get(int(user_id))
+        finally:
+            db_session.close()
 
     @app.before_request
     def before_request():
         session.permanent = True
+        g.db = SessionLocal()
+
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        db_session = g.pop('db', None)
+        if db_session is not None:
+            db_session.close()
 
     from app.auth import bp as auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')

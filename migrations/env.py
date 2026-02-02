@@ -1,7 +1,10 @@
 import logging
 from logging.config import fileConfig
+import sys
+from os.path import abspath, dirname
 
-from flask import current_app
+# Add the project root to the Python path
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from alembic import context
 
@@ -11,44 +14,23 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name or "alembic.ini")
+if config.config_file_name:
+    fileConfig(config.config_file_name)
 logger = logging.getLogger('alembic.env')
-
-
-def get_engine():
-    try:
-        # this works with Flask-SQLAlchemy<3 and Alchemical
-        return current_app.extensions['migrate'].db.get_engine()
-    except (TypeError, AttributeError):
-        # this works with Flask-SQLAlchemy>=3
-        return current_app.extensions['migrate'].db.engine
-
-
-def get_engine_url():
-    try:
-        return get_engine().url.render_as_string(hide_password=False).replace(
-            '%', '%%')
-    except AttributeError:
-        return str(get_engine().url).replace('%', '%%')
-
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = get_metadata()
-config.set_main_option('sqlalchemy.url', get_engine_url())
-target_db = current_app.extensions['migrate'].db
+from app.database import Base
+# Import all models to ensure they are registered with Base
+from app.models import User, Task, Habit, HabitLog, Movie 
+from config import Config
+
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-
-
-def get_metadata():
-    if hasattr(target_db, 'metadatas'):
-        return target_db.metadatas[None]
-    return target_db.metadata
 
 
 def run_migrations_offline():
@@ -63,9 +45,12 @@ def run_migrations_offline():
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = Config.SQLALCHEMY_DATABASE_URI
     context.configure(
-        url=url, target_metadata=get_metadata(), literal_binds=True
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
     )
 
     with context.begin_transaction():
@@ -79,28 +64,13 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
+    from app.database import engine
 
-    # this callback is used to prevent an auto-migration from being generated
-    # when there are no changes to the schema
-    # reference: http://alembic.zzzcomputing.com/en/latest/cookbook.html
-    def process_revision_directives(context, revision, directives):
-        if getattr(config.cmd_opts, 'autogenerate', False):
-            script = directives[0]
-            if script.upgrade_ops.is_empty():
-                directives[:] = []
-                logger.info('No changes in schema detected.')
-
-    conf_args = current_app.extensions['migrate'].configure_args
-    if conf_args.get("process_revision_directives") is None:
-        conf_args["process_revision_directives"] = process_revision_directives
-
-    connectable = get_engine()
+    connectable = engine
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection,
-            target_metadata=get_metadata(),
-            **conf_args
+            connection=connection, target_metadata=target_metadata
         )
 
         with context.begin_transaction():

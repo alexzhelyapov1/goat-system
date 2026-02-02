@@ -1,71 +1,64 @@
-import telegram
-import asyncio
-from app import create_app
-from app.models import User, Task
 from app.services.task_service import TaskService
+from app.services.user_service import UserService
 from app.schemas import TaskCreate
-
-def send_telegram_message(chat_id, text):
-    """Sends a message to a telegram chat."""
-    app = create_app()
-    if app.config['TELEGRAM_BOT_TOKEN']:
-        try:
-            bot = telegram.Bot(token=app.config['TELEGRAM_BOT_TOKEN'])
-            # Using asyncio.run() is acceptable here as RQ workers are synchronous.
-            asyncio.run(bot.send_message(chat_id=chat_id, text=text))
-        except Exception as e:
-            with app.app_context():
-                app.logger.error(f"Failed to send message to {chat_id}: {e}")
+from app.database import SessionLocal
+from app.telegram_utils import send_telegram_message, run_async_in_new_loop
 
 def handle_task_list(chat_id, task_type):
     """Fetches and sends a list of tasks to the user."""
-    app = create_app()
-    with app.app_context():
-        user = User.query.filter_by(telegram_chat_id=str(chat_id)).first()
+    db_session = SessionLocal()
+    try:
+        user = UserService.get_user_by_telegram_chat_id(db_session, str(chat_id))
         if not user:
-            send_telegram_message(chat_id, "Your account is not linked. Please use /start to link your account.")
+            run_async_in_new_loop(send_telegram_message(chat_id, "Your account is not linked."))
             return
 
-        tasks = TaskService.get_tasks_by_user_and_type(user.id, task_type)
+        tasks = TaskService.get_tasks_by_user_and_type(db_session, user.id, task_type)
         if tasks:
             message = f"Tasks for type: {task_type}\n\n"
             for task in tasks:
                 message += f"- {task.title} (ID: {task.id})\n"
         else:
             message = "No tasks found for this type."
-        send_telegram_message(chat_id, message)
+        run_async_in_new_loop(send_telegram_message(chat_id, message))
+    finally:
+        db_session.close()
 
 def create_task(user_id, task_data_dict):
     """Creates a new task."""
-    app = create_app()
-    with app.app_context():
+    db_session = SessionLocal()
+    try:
         task_data = TaskCreate(**task_data_dict)
-        TaskService.create_task(task_data, user_id)
-        user = User.query.get(user_id)
+        TaskService.create_task(db_session, task_data, user_id)
+        user = UserService.get_user_by_id(db_session, user_id)
         if user and user.telegram_chat_id:
-            send_telegram_message(
+            run_async_in_new_loop(send_telegram_message(
                 user.telegram_chat_id,
                 f"Task '{task_data.title}' created successfully."
-            )
+            ))
+    finally:
+        db_session.close()
 
 def delete_task(user_id, task_id):
     """Deletes a task."""
-    app = create_app()
-    with app.app_context():
-        task = TaskService.get_task(task_id)
-        user = User.query.get(user_id)
+    db_session = SessionLocal()
+    try:
+        task = TaskService.get_task(db_session, task_id)
+        user = UserService.get_user_by_id(db_session, user_id)
         if not user or not user.telegram_chat_id:
-            return 
+            return
 
         if task and task.user_id == user_id:
             task_title = task.title
-            TaskService.delete_task(task_id)
-            send_telegram_message(
+            TaskService.delete_task(db_session, task_id)
+            run_async_in_new_loop(send_telegram_message(
                 user.telegram_chat_id,
                 f"Task '{task_title}' deleted successfully."
-            )
+            ))
         else:
-            send_telegram_message(
+            run_async_in_new_loop(send_telegram_message(
                 user.telegram_chat_id,
-                f"Task not found or you are not authorized to delete it."
-            )
+                "Task not found or you are not authorized to delete it."
+            ))
+    finally:
+        db_session.close()

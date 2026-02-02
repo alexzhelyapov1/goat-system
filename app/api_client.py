@@ -8,17 +8,20 @@ def make_api_request(
     endpoint: str,
     json_data: Optional[dict] = None,
     form_data: Optional[dict] = None,
-    params: Optional[dict] = None
+    params: Optional[dict] = None,
+    token: Optional[str] = None
 ):
     if json_data and form_data:
         raise ValueError("Cannot provide both json_data and form_data.")
 
     headers = {}
-    # Check if we are in a request context and get token from cookie
-    if request and hasattr(request, 'cookies'):
-        token = request.cookies.get('access_token')
-        if token:
-            headers['Authorization'] = f'Bearer {token}'
+    auth_token = token
+    # If no token is provided as an argument, try to get it from the cookie
+    if not auth_token and request and hasattr(request, 'cookies'):
+        auth_token = request.cookies.get('access_token')
+
+    if auth_token:
+        headers['Authorization'] = f'Bearer {auth_token}'
 
     url = f"{API_BASE_URL}{endpoint}"
 

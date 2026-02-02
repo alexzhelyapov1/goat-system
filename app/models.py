@@ -1,14 +1,21 @@
-from app.extensions import db, login_manager
-from flask_login import UserMixin
-from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    Enum as SQLAlchemyEnum,
+    ForeignKey,
+    Boolean,
+    JSON,
+    Date
+)
+from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from flask_sqlalchemy.model import Model
-else:
-    Model = db.Model
+from app.database import Base
+
 
 class TaskStatus(enum.Enum):
     OPEN = 'OPEN'
@@ -28,88 +35,99 @@ class UserRole(enum.Enum):
     ADMIN = 'ADMIN'
     TRUSTED = 'TRUSTED'
 
-class User(UserMixin, Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), index=True, unique=True)
-    password_hash = db.Column(db.String(128))
-    telegram_chat_id = db.Column(db.String(64), unique=True)
-    telegram_username = db.Column(db.String(64))
-    role = db.Column(db.Enum(UserRole), default=UserRole.USER)
-    tasks = db.relationship('Task', backref='author', lazy='dynamic')
-    habits = db.relationship('Habit', backref='author', lazy='dynamic')
-    movies = db.relationship('Movie', backref='author', lazy='dynamic')
+class User(Base):
+    __tablename__ = 'user'
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(64), index=True, unique=True)
+    password_hash = Column(String(128))
+    telegram_chat_id = Column(String(64), unique=True, nullable=True)
+    telegram_username = Column(String(64), nullable=True)
+    role = Column(SQLAlchemyEnum(UserRole), default=UserRole.USER, nullable=False)
 
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+    tasks = relationship('Task', back_populates='author')
+    habits = relationship('Habit', back_populates='author')
+    movies = relationship('Movie', back_populates='author')
 
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+    # Properties for Flask-Login compatibility
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return str(self.id)
 
     def __repr__(self):
         return f'<User {self.username}>'
 
-@login_manager.user_loader
-def load_user(id):
-    return User.query.get(int(id))
+class Task(Base):
+    __tablename__ = 'task'
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    title = Column(String(140))
+    details = Column(Text, nullable=True)
+    status = Column(SQLAlchemyEnum(TaskStatus), default=TaskStatus.OPEN, nullable=False)
+    type = Column(SQLAlchemyEnum(TaskType), default=TaskType.INBOX, nullable=False)
+    deadline = Column(DateTime, nullable=True)
+    duration = Column(Integer, nullable=True)
+    planned_start = Column(DateTime, nullable=True)
+    planned_end = Column(DateTime, nullable=True)
+    suspend_due = Column(DateTime, nullable=True)
+    notify_at = Column(DateTime, nullable=True)
+    planned_start_notified = Column(Boolean, default=False, nullable=True)
 
-class Task(Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    title = db.Column(db.String(140))
-    details = db.Column(db.Text)
-    status = db.Column(db.Enum(TaskStatus), default=TaskStatus.OPEN)
-    type = db.Column(db.Enum(TaskType), default=TaskType.INBOX)
-    deadline = db.Column(db.DateTime)
-    duration = db.Column(db.Integer)
-    planned_start = db.Column(db.DateTime)
-    planned_end = db.Column(db.DateTime)
-    suspend_due = db.Column(db.DateTime)
-    notify_at = db.Column(db.DateTime)
-    planned_start_notified = db.Column(db.Boolean, default=False)
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    author = relationship('User', back_populates='tasks')
 
     def __repr__(self):
         return f'<Task {self.title}>'
 
-class Habit(Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    name = db.Column(db.String(140))
-    description = db.Column(db.Text)
-    start_date = db.Column(db.DateTime, default=datetime.utcnow)
-    end_date = db.Column(db.DateTime)
-    strategy_type = db.Column(db.String(50))
-    strategy_params = db.Column(db.JSON)
-    habit_logs = db.relationship('HabitLog', backref='habit', lazy='dynamic')
+class Habit(Base):
+    __tablename__ = 'habit'
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    name = Column(String(140))
+    description = Column(Text, nullable=True)
+    start_date = Column(DateTime, default=datetime.utcnow)
+    end_date = Column(DateTime, nullable=True)
+    strategy_type = Column(String(50), nullable=True)
+    strategy_params = Column(JSON, nullable=True)
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    author = relationship('User', back_populates='habits')
+    habit_logs = relationship('HabitLog', back_populates='habit')
 
     def __repr__(self):
         return f'<Habit {self.name}>'
 
-class HabitLog(Model):
-    id = db.Column(db.Integer, primary_key=True)
-    habit_id = db.Column(db.Integer, db.ForeignKey('habit.id'))
-    date = db.Column(db.Date, default=datetime.utcnow)
-    is_done = db.Column(db.Boolean, default=False)
-    index = db.Column(db.Integer, default=0)
+class HabitLog(Base):
+    __tablename__ = 'habit_log'
+    id = Column(Integer, primary_key=True, index=True)
+    habit_id = Column(Integer, ForeignKey('habit.id'))
+    date = Column(Date, default=datetime.utcnow)
+    is_done = Column(Boolean, default=False)
+    index = Column(Integer, default=0)
+
+    habit = relationship('Habit', back_populates='habit_logs')
 
     def __repr__(self):
         return f'<HabitLog {self.id}>'
 
-class Movie(Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    title = db.Column(db.String(140))
-    genre = db.Column(db.String(50))
-    rating = db.Column(db.Integer)
-    comment = db.Column(db.Text)
+class Movie(Base):
+    __tablename__ = 'movie'
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    title = Column(String(140))
+    genre = Column(String(50), nullable=True)
+    rating = Column(Integer, nullable=True)
+    comment = Column(Text, nullable=True)
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    author = relationship('User', back_populates='movies')
 
     def __repr__(self):
         return f'<Movie {self.title}>'

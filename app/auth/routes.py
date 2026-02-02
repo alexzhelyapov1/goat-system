@@ -1,27 +1,21 @@
-from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, make_response
+from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, make_response, g
 from flask_login import login_user, logout_user, current_user, login_required
-from app import db
 from app.auth import bp
-from app.models import User, UserRole
+from app.models import User
 from app.schemas import UserCreate
 from pydantic import ValidationError
 import uuid
 from app.queue import redis_conn
 import httpx
-from config import API_BASE_URL
-from app.api_client import make_api_request # Import the new centralized API client
-
+from app.api_client import make_api_request
+from app.auth.jwt import decode_access_token
 
 @bp.route('/telegram/connect', methods=['POST'])
 @login_required
 def telegram_connect():
     """Generate a token for telegram linking and store it in Redis."""
     token = str(uuid.uuid4())
-    # Key: telegram_token:<token>, Value: user_id, TTL: 10 minutes
     redis_conn.set(f"telegram_token:{token}", current_user.id, ex=600)
-
-    # Call FastAPI endpoint to update user with Telegram info if available
-    # For now, we only flash the token. The bot will use this token to update.
     flash(f'Your Telegram connection token is: {token}. Use it in your Telegram bot.')
     return jsonify({
         'token': token,
@@ -46,21 +40,17 @@ def register():
     if request.method == 'POST':
         try:
             user_data = UserCreate(username=request.form['username'], password=request.form['password'])
-            if User.query.filter_by(username=user_data.username).first():
-                flash('Please use a different username.')
-                return redirect(url_for('auth.register'))
-            user = User(username=user_data.username)
-            user.set_password(user_data.password)
-            # Make the first user an admin
-            if not User.query.first():
-                user.role = UserRole.ADMIN
-            db.session.add(user)
-            db.session.commit()
+            make_api_request("POST", "/auth/register", json_data=user_data.model_dump())
             flash('Congratulations, you are now a registered user!')
             return redirect(url_for('auth.login'))
         except ValidationError as e:
-            flash(str(e.errors()))
-            return redirect(url_for('auth.register'))
+            flash(f"Validation Error: {e.errors()}", 'danger')
+        except httpx.HTTPStatusError as e:
+            error_detail = e.response.json().get('detail', 'Registration failed.')
+            flash(error_detail, 'danger')
+        except httpx.RequestError as e:
+            flash(f"Could not connect to the registration service: {e}", "danger")
+        return redirect(url_for('auth.register'))
     return render_template('auth/register.html')
 
 @bp.route('/login', methods=['GET', 'POST'])
@@ -68,27 +58,38 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     if request.method == 'POST':
-        user = User.query.filter_by(username=request.form['username']).first()
-        if user is None or not user.check_password(request.form['password']):
-            flash('Invalid username or password')
-            return redirect(url_for('auth.login'))
-        login_user(user, remember=True)
-
         try:
-            response = make_api_request(
+            # First, get the JWT token from the API
+            token_response = make_api_request(
                 "POST",
-                "/token",
+                "/auth/token",
                 form_data={"username": request.form['username'], "password": request.form['password']},
             )
-            token_data = response.json()
+            token_data = token_response.json()
+            access_token = token_data['access_token']
+
+            # Get user data from the API
+            user_response = make_api_request("GET", "/auth/me", token=access_token)
+            user_json = user_response.json()
+
+            # Create an in-memory User object for Flask-Login
+            user = User(
+                id=user_json['id'],
+                username=user_json['username'],
+                role=user_json['role']
+            )
+
+            login_user(user, remember=True)
             
             resp = make_response(redirect(url_for('index')))
-            resp.set_cookie('access_token', token_data['access_token'], httponly=True, samesite='Lax')
+            resp.set_cookie('access_token', access_token, httponly=True, samesite='Lax')
             return resp
 
-        except (httpx.RequestError, httpx.HTTPStatusError) as e:
-            flash(f"Failed to obtain JWT token from API.", "danger")
-            logout_user()
+        except httpx.HTTPStatusError as e:
+            flash("Invalid username or password.", "danger")
+            return redirect(url_for('auth.login'))
+        except httpx.RequestError as e:
+            flash(f"Could not connect to the login service: {e}", "danger")
             return redirect(url_for('auth.login'))
 
     return render_template('auth/login.html')
@@ -103,12 +104,10 @@ def logout():
 @bp.route('/profile')
 @login_required
 def profile():
-    # Refresh the user object from the database to get the latest data
-    db.session.refresh(current_user)
+    g.db.refresh(current_user)
     return render_template('auth/profile.html', user=current_user)
 
 @bp.route('/trigger-error')
 @login_required
 def trigger_error():
-    """This route is for testing the error reporting functionality."""
     raise RuntimeError("This is a test error from the web app.")

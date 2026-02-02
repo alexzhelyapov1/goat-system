@@ -4,19 +4,11 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.services.user_service import UserService
-from app.extensions import SessionLocal
+from app.database import get_db
 from app.auth.jwt import decode_access_token
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
-
-
-def get_db() -> Generator:
-    try:
-        db = SessionLocal()
-        yield db
-    finally:
-        db.close()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 def get_current_user(
@@ -27,7 +19,10 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    username = decode_access_token(token)
+    payload = decode_access_token(token)
+    if payload is None:
+        raise credentials_exception
+    username: Optional[str] = payload.get("sub")
     if username is None:
         raise credentials_exception
     user = UserService.get_user_by_username(db, username=username)
