@@ -15,18 +15,23 @@ services:
         condition: service_healthy
 
   frontend:
-    build: .
-    command: sh -c "gunicorn --workers 1 --worker-class gevent --bind 0.0.0.0:5000 run:app"
+    build:
+      context: ./frontend
+    command: sh -c "npm run dev"
     volumes:
-      - sqlite_data:/app/data
+      - ./frontend:/app
+      - /app/node_modules
     env_file:
       - ./.env
+    environment:
+      - VITE_API_PROXY_TARGET=http://api:5001
     restart: on-failure:3
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000"]
       interval: 5s
       timeout: 3s
       retries: 5
+      start_period: 30s
     depends_on:
       api:
         condition: service_healthy
