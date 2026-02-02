@@ -10,9 +10,10 @@ dayjs.extend(weekOfYear);
 
 interface HabitsListPageProps {
   token: string;
+  onCreateHabit: () => void; // New prop for creating a habit
 }
 
-const HabitsListPage: React.FC<HabitsListPageProps> = ({ token }) => {
+const HabitsListPage: React.FC<HabitsListPageProps> = ({ token, onCreateHabit }) => {
   const [habitsWithLogs, setHabitsWithLogs] = useState<HabitWithLogs[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +57,7 @@ const HabitsListPage: React.FC<HabitsListPageProps> = ({ token }) => {
     };
 
     fetchHabits();
-  }, [token, today]); // today as dependency for useEffect to ensure recalculation if the day changes
+  }, [token, today]);
 
   if (loading) {
     return <div className="text-center p-4">Loading habits...</div>;
@@ -68,7 +69,15 @@ const HabitsListPage: React.FC<HabitsListPageProps> = ({ token }) => {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6 text-center">My Habits</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-center">My Habits</h1>
+        <button
+          onClick={onCreateHabit}
+          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+        >
+          Create New Habit
+        </button>
+      </div>
       {habitsWithLogs.length === 0 ? (
         <p className="text-center text-gray-600">No habits found. Time to create some!</p>
       ) : (

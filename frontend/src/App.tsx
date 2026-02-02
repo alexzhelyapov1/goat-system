@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
-import HabitsListPage from './components/HabitsListPage'; // Import HabitsListPage
+import HabitsListPage from './components/HabitsListPage';
+import CreateHabitPage from './components/CreateHabitPage'; // Import CreateHabitPage
 
 interface User {
   id: number;
@@ -18,6 +19,7 @@ function App() {
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [loadingUser, setLoadingUser] = useState(false);
   const [showRegisterPage, setShowRegisterPage] = useState(false);
+  const [showCreateHabitPage, setShowCreateHabitPage] = useState(false); // New state for creating habit
 
   // Fetch User Data Effect
   useEffect(() => {
@@ -56,6 +58,7 @@ function App() {
     setToken(newToken);
     setAuthMessage(null);
     setShowRegisterPage(false);
+    setShowCreateHabitPage(false); // Reset habit creation view
   };
 
   const handleLoginError = (error: string) => {
@@ -78,6 +81,16 @@ function App() {
     setUser(null);
     setAuthMessage(null);
     setShowRegisterPage(false);
+    setShowCreateHabitPage(false); // Reset habit creation view
+  };
+
+  const handleHabitCreated = () => {
+    setShowCreateHabitPage(false); // Go back to list after creation
+    // Optionally, trigger a refresh of habits list if it were using a global state or context
+  };
+
+  const handleCancelCreateHabit = () => {
+    setShowCreateHabitPage(false); // Go back to list
   };
 
   return (
@@ -85,8 +98,26 @@ function App() {
       {token && user ? (
         // User is logged in
         <>
+          {authMessage && ( // Display messages like "Habit created successfully!"
+            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded relative" role="alert">
+              <span className="block sm:inline">{authMessage}</span>
+            </div>
+          )}
           {loadingUser && <p className="text-blue-500">Loading user data...</p>}
-          {!loadingUser && user && <HabitsListPage token={token} />} {/* Pass token prop to HabitsListPage */}
+          {!loadingUser && (
+            showCreateHabitPage ? (
+              <CreateHabitPage
+                token={token}
+                onHabitCreated={() => {
+                  handleHabitCreated();
+                  setAuthMessage('Habit created successfully!'); // Set success message
+                }}
+                onCancel={handleCancelCreateHabit}
+              />
+            ) : (
+              <HabitsListPage token={token} onCreateHabit={() => setShowCreateHabitPage(true)} />
+            )
+          )}
         </>
       ) : (
         // User is not logged in, show login or register page
