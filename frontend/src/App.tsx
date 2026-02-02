@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
-import UserProfilePage from './components/UserProfilePage'; // Import UserProfilePage
+import HabitsListPage from './components/HabitsListPage'; // Import HabitsListPage
 
 interface User {
   id: number;
@@ -86,7 +86,7 @@ function App() {
         // User is logged in
         <>
           {loadingUser && <p className="text-blue-500">Loading user data...</p>}
-          {!loadingUser && <UserProfilePage user={user} onLogout={handleLogout} />}
+          {!loadingUser && user && <HabitsListPage token={token} />} {/* Pass token prop to HabitsListPage */}
         </>
       ) : (
         // User is not logged in, show login or register page
