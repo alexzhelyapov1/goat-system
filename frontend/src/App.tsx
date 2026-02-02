@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import LoginPage from './components/LoginPage';
-import RegisterPage from './components/RegisterPage'; // Import RegisterPage
+import RegisterPage from './components/RegisterPage';
+import UserProfilePage from './components/UserProfilePage'; // Import UserProfilePage
 
 interface User {
   id: number;
@@ -14,9 +15,9 @@ interface User {
 function App() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [authMessage, setAuthMessage] = useState<string | null>(null); // Use a single message for login/register errors/success
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [loadingUser, setLoadingUser] = useState(false);
-  const [showRegisterPage, setShowRegisterPage] = useState(false); // New state to toggle between Login and Register
+  const [showRegisterPage, setShowRegisterPage] = useState(false);
 
   // Fetch User Data Effect
   useEffect(() => {
@@ -30,11 +31,11 @@ function App() {
             },
           });
           setUser(response.data);
-          setAuthMessage(null); // Clear messages on successful user fetch
+          setAuthMessage(null);
         } catch (err) {
           if (axios.isAxiosError(err) && err.response && err.response.status === 401) {
             setAuthMessage('Session expired. Please log in again.');
-            setToken(null); // Clear invalid token
+            setToken(null);
           } else if (axios.isAxiosError(err) && err.message) {
             setAuthMessage(`Failed to fetch user: ${err.message}`);
           } else {
@@ -47,14 +48,14 @@ function App() {
       };
       fetchUser();
     } else {
-      setUser(null); // Clear user if no token
+      setUser(null);
     }
   }, [token]);
 
   const handleLoginSuccess = (newToken: string) => {
     setToken(newToken);
     setAuthMessage(null);
-    setShowRegisterPage(false); // Ensure login view is off
+    setShowRegisterPage(false);
   };
 
   const handleLoginError = (error: string) => {
@@ -65,7 +66,7 @@ function App() {
 
   const handleRegisterSuccess = () => {
     setAuthMessage('Registration successful! Please log in.');
-    setShowRegisterPage(false); // Switch to login page after successful registration
+    setShowRegisterPage(false);
   };
 
   const handleRegisterError = (error: string) => {
@@ -76,29 +77,17 @@ function App() {
     setToken(null);
     setUser(null);
     setAuthMessage(null);
-    setShowRegisterPage(false); // Default to login view
+    setShowRegisterPage(false);
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
       {token && user ? (
         // User is logged in
-        <div className="p-8 bg-white shadow-md rounded-lg text-center">
-          <h2 className="text-2xl font-bold mb-4">Welcome, {user.username}!</h2>
+        <>
           {loadingUser && <p className="text-blue-500">Loading user data...</p>}
-          {!loadingUser && (
-            <>
-              <p>Admin: {user.is_admin ? 'Yes' : 'No'}</p>
-              {user.telegram_username && <p>Telegram: @{user.telegram_username}</p>}
-            </>
-          )}
-          <button
-            onClick={handleLogout}
-            className="mt-6 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
-            Logout
-          </button>
-        </div>
+          {!loadingUser && <UserProfilePage user={user} onLogout={handleLogout} />}
+        </>
       ) : (
         // User is not logged in, show login or register page
         <>
@@ -117,7 +106,7 @@ function App() {
             <LoginPage
               onLoginSuccess={handleLoginSuccess}
               onLoginError={handleLoginError}
-              onRegisterClick={() => setShowRegisterPage(true)} // Pass new prop to LoginPage
+              onRegisterClick={() => setShowRegisterPage(true)}
             />
           )}
         </>
