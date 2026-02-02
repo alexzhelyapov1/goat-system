@@ -1,48 +1,22 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import LoginPage from './components/LoginPage';
+import RegisterPage from './components/RegisterPage'; // Import RegisterPage
 
 interface User {
   id: number;
   username: string;
-  email: string;
   is_admin: boolean;
   telegram_id: number | null;
   telegram_username: string | null;
 }
 
 function App() {
-  const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
-  const [healthError, setHealthError] = useState<string | null>(null);
-
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [authMessage, setAuthMessage] = useState<string | null>(null); // Use a single message for login/register errors/success
   const [loadingUser, setLoadingUser] = useState(false);
-
-  // Health Check Effect
-  useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const response = await axios.get('/api/health');
-        if (response.data.status === 'ok') {
-          setIsHealthy(true);
-        } else {
-          setIsHealthy(false);
-          setHealthError('Unexpected health status');
-        }
-      } catch (err) {
-        setIsHealthy(false);
-        if (axios.isAxiosError(err) && err.message) {
-          setHealthError(err.message);
-        } else {
-          setHealthError('An unknown error occurred during health check.');
-        }
-      }
-    };
-
-    checkHealth();
-  }, []);
+  const [showRegisterPage, setShowRegisterPage] = useState(false); // New state to toggle between Login and Register
 
   // Fetch User Data Effect
   useEffect(() => {
@@ -56,15 +30,15 @@ function App() {
             },
           });
           setUser(response.data);
-          setLoginError(null); // Clear login error on successful user fetch
+          setAuthMessage(null); // Clear messages on successful user fetch
         } catch (err) {
           if (axios.isAxiosError(err) && err.response && err.response.status === 401) {
-            setLoginError('Session expired. Please log in again.');
+            setAuthMessage('Session expired. Please log in again.');
             setToken(null); // Clear invalid token
           } else if (axios.isAxiosError(err) && err.message) {
-            setLoginError(`Failed to fetch user: ${err.message}`);
+            setAuthMessage(`Failed to fetch user: ${err.message}`);
           } else {
-            setLoginError('An unknown error occurred while fetching user data.');
+            setAuthMessage('An unknown error occurred while fetching user data.');
           }
           setUser(null);
         } finally {
@@ -79,19 +53,30 @@ function App() {
 
   const handleLoginSuccess = (newToken: string) => {
     setToken(newToken);
-    setLoginError(null);
+    setAuthMessage(null);
+    setShowRegisterPage(false); // Ensure login view is off
   };
 
   const handleLoginError = (error: string) => {
-    setLoginError(error);
+    setAuthMessage(error);
     setToken(null);
     setUser(null);
+  };
+
+  const handleRegisterSuccess = () => {
+    setAuthMessage('Registration successful! Please log in.');
+    setShowRegisterPage(false); // Switch to login page after successful registration
+  };
+
+  const handleRegisterError = (error: string) => {
+    setAuthMessage(error);
   };
 
   const handleLogout = () => {
     setToken(null);
     setUser(null);
-    setLoginError(null);
+    setAuthMessage(null);
+    setShowRegisterPage(false); // Default to login view
   };
 
   return (
@@ -103,7 +88,6 @@ function App() {
           {loadingUser && <p className="text-blue-500">Loading user data...</p>}
           {!loadingUser && (
             <>
-              <p>Email: {user.email}</p>
               <p>Admin: {user.is_admin ? 'Yes' : 'No'}</p>
               {user.telegram_username && <p>Telegram: @{user.telegram_username}</p>}
             </>
@@ -116,14 +100,26 @@ function App() {
           </button>
         </div>
       ) : (
-        // User is not logged in, show login page
+        // User is not logged in, show login or register page
         <>
-          {loginError && (
+          {authMessage && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded relative" role="alert">
-              <span className="block sm:inline">{loginError}</span>
+              <span className="block sm:inline">{authMessage}</span>
             </div>
           )}
-          <LoginPage onLoginSuccess={handleLoginSuccess} onLoginError={handleLoginError} />
+          {showRegisterPage ? (
+            <RegisterPage
+              onRegisterSuccess={handleRegisterSuccess}
+              onRegisterError={handleRegisterError}
+              onLoginClick={() => setShowRegisterPage(false)}
+            />
+          ) : (
+            <LoginPage
+              onLoginSuccess={handleLoginSuccess}
+              onLoginError={handleLoginError}
+              onRegisterClick={() => setShowRegisterPage(true)} // Pass new prop to LoginPage
+            />
+          )}
         </>
       )}
     </div>
