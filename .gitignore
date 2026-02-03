@@ -18,3 +18,5 @@ context.txt
 prompts
 instance/
 *.log
+
+frontend
