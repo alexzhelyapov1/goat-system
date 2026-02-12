@@ -4,7 +4,7 @@
 venv/
 
 # Database
-app.db
+data/*
 
 # Python
 __pycache__/

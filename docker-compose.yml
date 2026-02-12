@@ -18,7 +18,7 @@ services:
     build: .
     command: sh -c "gunicorn --workers 1 --worker-class gevent --bind 0.0.0.0:5000 run:app"
     volumes:
-      - sqlite_data:/app/data
+      - ./data:/app/data
     env_file:
       - ./.env
     restart: on-failure:3
@@ -35,7 +35,7 @@ services:
     build: .
     command: sh -c "alembic -c migrations/alembic.ini upgrade head && uvicorn main:app --host 0.0.0.0 --port 5001"
     volumes:
-      - sqlite_data:/app/data
+      - ./data:/app/data
     env_file:
       - ./.env
     restart: on-failure:3
@@ -52,7 +52,7 @@ services:
     build: .
     command: sh -c "python bot.py"
     volumes:
-      - sqlite_data:/app/data
+      - ./data:/app/data
     env_file:
       - ./.env
     restart: on-failure:3
@@ -64,7 +64,7 @@ services:
     build: .
     command: sh -c "python worker.py"
     volumes:
-      - sqlite_data:/app/data
+      - ./data:/app/data
     env_file:
       - ./.env
     restart: on-failure:3
@@ -76,7 +76,7 @@ services:
     build: .
     command: sh -c "python clock.py"
     volumes:
-      - sqlite_data:/app/data
+      - ./data:/app/data
     env_file:
       - ./.env
     restart: on-failure:3
@@ -94,6 +94,3 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
-
-volumes:
-  sqlite_data:
