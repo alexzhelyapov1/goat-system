@@ -1,7 +1,7 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify, current_app, make_response, g
 from flask_login import login_user, logout_user, current_user, login_required
 from app.auth import bp
-from app.models import User
+from app.models import User, UserRole
 from app.schemas import UserCreate
 from pydantic import ValidationError
 import uuid
@@ -76,7 +76,7 @@ def login():
             user = User(
                 id=user_json['id'],
                 username=user_json['username'],
-                role=user_json['role']
+                role=UserRole[user_json['role']]
             )
 
             login_user(user, remember=True)

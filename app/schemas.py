@@ -2,7 +2,7 @@ from pydantic import BaseModel, validator
 from typing import Optional
 from datetime import datetime, date, timezone
 from zoneinfo import ZoneInfo
-from app.models import TaskStatus, TaskType
+from app.models import TaskStatus, TaskType, UserRole
 
 class UserBase(BaseModel):
     username: str
@@ -12,6 +12,7 @@ class UserCreate(UserBase):
 
 class UserSchema(UserBase):
     id: int
+    role: UserRole
 
     class Config:
         from_attributes = True
